@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Studio Aa · HQ</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,700;14..32,800&display=swap');
+  :root {
+    --ink: #141318;
+    --gray-1: #4e4c58;
+    --gray-2: #85838f;
+    --glass: rgba(255,255,255,.44);
+    --glass-line: rgba(255,255,255,.6);
+    --glass-shadow: 0 2px 6px rgba(30,28,40,.04), 0 14px 40px rgba(30,28,40,.08);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif !important; }
+  html { -webkit-font-smoothing: antialiased; }
+  body {
+    background: #f2f2f4; color: var(--ink);
+    font-size: 13.5px; font-weight: 700; letter-spacing: -0.014em;
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+
+  /* the same sky */
+  .ambient { position: fixed; inset: -12%; z-index: 0; pointer-events: none; overflow: hidden; }
+  .ambient::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(118deg, #ffffff 0%, #d2d2db 26%, #f2f2f5 48%, #c2c2cd 72%, #efeff2 100%);
+    background-size: 320% 320%;
+    background-position: var(--skyx, 0%) var(--skyy, 0%);
+  }
+  .ambient i { position: absolute; border-radius: 50%; will-change: transform; }
+  .ambient i:nth-child(1) { width: 58vw; height: 58vw; background: radial-gradient(circle, rgba(255,255,255,.95), rgba(255,255,255,0) 62%); top: -16%; left: -10%; filter: blur(55px); }
+  .ambient i:nth-child(2) { width: 54vw; height: 54vw; background: radial-gradient(circle, rgba(74,72,86,.5), rgba(74,72,86,0) 64%); bottom: -20%; right: -12%; filter: blur(70px); }
+  .ambient i:nth-child(3) { width: 30vw; height: 30vw; background: radial-gradient(circle, rgba(140,138,152,.45), rgba(140,138,152,0) 62%); top: 24%; right: 22%; filter: blur(55px); }
+  body::after {
+    content: ''; position: fixed; inset: 0; z-index: 2; pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+    opacity: .02; mix-blend-mode: overlay;
+  }
+
+  /* the card */
+  .card {
+    position: relative; z-index: 1;
+    width: min(92vw, 380px);
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(26px) saturate(1.05); backdrop-filter: blur(26px) saturate(1.05);
+    border: 1px solid var(--glass-line);
+    border-radius: 28px;
+    padding: 34px 30px 28px;
+    box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,.85);
+    text-align: center;
+    animation: cardIn .9s cubic-bezier(.2,.9,.3,1) both;
+  }
+  @keyframes cardIn { from { opacity: 0; transform: translateY(26px) scale(1.04); filter: blur(8px); } to { opacity: 1; transform: none; filter: none; } }
+  .card::before {
+    content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    background: linear-gradient(118deg, rgba(255,255,255,.5) 8%, rgba(255,255,255,0) 38%);
+    opacity: .45;
+  }
+
+  /* the mark */
+  .mark {
+    width: 62px; height: 62px; margin: 0 auto 14px;
+    border-radius: 19px;
+    background: var(--ink); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 27px; font-weight: 800; letter-spacing: -0.05em;
+    box-shadow: 0 10px 26px rgba(20,19,24,.25);
+    animation: markIn 1s cubic-bezier(.2,.9,.3,1) .12s both;
+  }
+  @keyframes markIn { from { opacity: 0; transform: translateY(14px) scale(.9); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+  .wordmark { font-size: 16px; font-weight: 800; letter-spacing: -0.025em; }
+  .tag { font-size: 11px; color: var(--gray-2); margin-top: 3px; margin-bottom: 24px; }
+
+  .field {
+    width: 100%; margin-bottom: 10px;
+    background: rgba(255,255,255,.55);
+    border: 1px solid rgba(20,19,24,.1);
+    border-radius: 13px;
+    padding: 13px 15px;
+    font-size: 13.5px; font-weight: 700; color: var(--ink);
+    outline: none; text-align: left;
+    transition: border-color .15s ease;
+  }
+  .field:focus { border-color: var(--ink); }
+  .field::placeholder { color: var(--gray-2); opacity: 1; }
+  .go {
+    width: 100%; margin-top: 6px;
+    border: none; background: var(--ink); color: #fff;
+    font-size: 13.5px; font-weight: 700;
+    border-radius: 13px; padding: 14px; cursor: pointer;
+    transition: transform .2s cubic-bezier(.2,.9,.3,1), background .15s ease;
+  }
+  .go:hover { background: #000; transform: translateY(-1px); }
+  .go:active { transform: translateY(0); }
+  .hint { font-size: 10.5px; color: var(--gray-2); margin-top: 16px; }
+  .hint a { color: var(--gray-1); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+
+  .err { font-size: 11px; color: #b04030; margin: 2px 0 8px; display: none; text-align: left; padding-left: 4px; }
+
+  /* the exit: frost rises, HQ next */
+  #frost {
+    position: fixed; inset: 0; z-index: 10; pointer-events: none;
+    background: rgba(255,255,255,.25);
+    -webkit-backdrop-filter: blur(0); backdrop-filter: blur(0);
+    opacity: 0; transition: opacity .7s ease, backdrop-filter .7s ease;
+  }
+  body.leaving #frost { opacity: 1; -webkit-backdrop-filter: blur(30px); backdrop-filter: blur(30px); pointer-events: auto; }
+  body.leaving .card { transition: all .6s cubic-bezier(.5,0,.7,.4); opacity: 0; transform: translateY(-18px) scale(.98); filter: blur(6px); }
+
+  @media (prefers-reduced-motion: reduce) { .card, .mark { animation: none; } }
+</style>
+</head>
+<body>
+<div class="ambient"><i></i><i></i><i></i></div>
+<div id="frost"></div>
+
+<div class="card">
+  <div class="mark">Aa</div>
+  <div class="wordmark">Studio Aa</div>
+  <div class="tag">HQ</div>
+
+  <input class="field" id="email" type="email" placeholder="email" autocomplete="email">
+  <input class="field" id="pass" type="password" placeholder="password" autocomplete="current-password" onkeydown="if(event.key==='Enter') enter()">
+  <div class="err" id="err">that didn't work, try again</div>
+  <button class="go" onclick="enter()">Enter HQ</button>
+
+  <div class="hint">no account? <a onclick="alert('Request access flow goes here, wire to email or Netlify Identity signup.')">request access</a></div>
+</div>
+
+<script>
+  /* ---------- the sky engine, same as HQ ---------- */
+  (function sky() {
+    const blobs = document.querySelectorAll('.ambient i');
+    const amb = document.querySelector('.ambient');
+    const seeds = [0, 1.7, 3.1];
+    let last = 0;
+    function frame(ts) {
+      if (ts - last > 33) {
+        last = ts;
+        const t = ts / 1000 * 0.07;
+        amb.style.setProperty('--skyx', (50 + 50 * Math.sin(t * 0.9)) + '%');
+        amb.style.setProperty('--skyy', (50 + 50 * Math.cos(t * 0.7)) + '%');
+        blobs.forEach((b, i) => {
+          const s = seeds[i];
+          const x = Math.sin(t * (0.8 + i * 0.13) + s) * 13;
+          const y = Math.cos(t * (0.6 + i * 0.11) + s) * 10;
+          const sc = 1 + Math.sin(t * 0.5 + s) * 0.13;
+          b.style.transform = 'translate(' + x + 'vw,' + y + 'vh) scale(' + sc + ')';
+        });
+      }
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  })();
+
+  /* ---------- auth ----------
+     DEMO MODE: any email + password passes, then hands off to the HQ.
+     REAL MODE: replace authenticate() with your backend. Two clean paths:
+       1. Netlify Identity (no database to run): include their widget,
+          call netlifyIdentity.open(), gate on the login event.
+       2. Any API: POST { email, password } to /api/login, expect a session
+          token, store it, then leave().
+     Never store passwords client side. This page never does. */
+  async function authenticate(email, password) {
+    // return fetch('/api/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ email, password }) }).then(r => r.ok);
+    return email.includes('@') && password.length > 0;   // demo gate
+  }
+
+  async function enter() {
+    const email = document.getElementById('email').value.trim();
+    const pass = document.getElementById('pass').value;
+    const err = document.getElementById('err');
+    err.style.display = 'none';
+    const ok = await authenticate(email, pass);
+    if (!ok) { err.style.display = 'block'; return; }
+    if (navigator.vibrate) navigator.vibrate(10);
+    leave();
+  }
+  function leave() {
+    document.body.classList.add('leaving');
+    setTimeout(() => { window.location.href = 'hq-preview.html'; }, 750);
+  }
+</script>
+</body>
+</html>
