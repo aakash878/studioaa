@@ -75,31 +75,21 @@
   .wordmark { font-size: 16px; font-weight: 800; letter-spacing: -0.025em; }
   .tag { font-size: 11px; color: var(--gray-2); margin-top: 3px; margin-bottom: 24px; }
 
-  .field {
-    width: 100%; margin-bottom: 10px;
-    background: rgba(255,255,255,.55);
-    border: 1px solid rgba(20,19,24,.1);
-    border-radius: 13px;
-    padding: 13px 15px;
-    font-size: 13.5px; font-weight: 700; color: var(--ink);
-    outline: none; text-align: left;
-    transition: border-color .15s ease;
-  }
-  .field:focus { border-color: var(--ink); }
-  .field::placeholder { color: var(--gray-2); opacity: 1; }
   .go {
     width: 100%; margin-top: 6px;
-    border: none; background: var(--ink); color: #fff;
+    border: 1px solid rgba(20,19,24,.14); background: #fff; color: var(--ink);
     font-size: 13.5px; font-weight: 700;
-    border-radius: 13px; padding: 14px; cursor: pointer;
+    border-radius: 13px; padding: 13px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
     transition: transform .2s cubic-bezier(.2,.9,.3,1), background .15s ease;
   }
-  .go:hover { background: #000; transform: translateY(-1px); }
+  .go:hover { background: #f4f4f6; transform: translateY(-1px); }
   .go:active { transform: translateY(0); }
-  .hint { font-size: 10.5px; color: var(--gray-2); margin-top: 16px; }
+  .go svg { flex-shrink: 0; }
+  .hint { font-size: 10.5px; color: var(--gray-2); margin-top: 16px; line-height: 1.6; }
   .hint a { color: var(--gray-1); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 
-  .err { font-size: 11px; color: #b04030; margin: 2px 0 8px; display: none; text-align: left; padding-left: 4px; }
+  .err { font-size: 11px; color: #b04030; margin: 2px 0 12px; display: none; text-align: left; padding-left: 4px; }
 
   /* the exit: frost rises, HQ next */
   #frost {
@@ -123,12 +113,13 @@
   <div class="wordmark">Studio Aa</div>
   <div class="tag">HQ</div>
 
-  <input class="field" id="email" type="email" placeholder="email" autocomplete="email">
-  <input class="field" id="pass" type="password" placeholder="password" autocomplete="current-password" onkeydown="if(event.key==='Enter') enter()">
   <div class="err" id="err">that didn't work, try again</div>
-  <button class="go" onclick="enter()">Enter HQ</button>
+  <button class="go" onclick="enter()">
+    <svg width="17" height="17" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.56 2.7-3.87 2.7-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.8.54-1.84.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.98v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.67 9c0-.59.1-1.17.28-1.7V4.97H.98A9 9 0 0 0 0 9c0 1.45.35 2.83.98 4.03z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .98 4.97L3.95 7.3C4.66 5.17 6.65 3.58 9 3.58z"/></svg>
+    Continue with Google
+  </button>
 
-  <div class="hint">no account? <a onclick="alert('Request access flow goes here, wire to email or Netlify Identity signup.')">request access</a></div>
+  <div class="hint">Signing in also connects your Gmail so HQ can route things you get emailed into the right section.<br><a onclick="skipLogin()">Just preview it, skip sign-in</a></div>
 </div>
 
 <script>
@@ -157,33 +148,31 @@
     requestAnimationFrame(frame);
   })();
 
-  /* ---------- auth ----------
-     DEMO MODE: any email + password passes, then hands off to the HQ.
-     REAL MODE: replace authenticate() with your backend. Two clean paths:
-       1. Netlify Identity (no database to run): include their widget,
-          call netlifyIdentity.open(), gate on the login event.
-       2. Any API: POST { email, password } to /api/login, expect a session
-          token, store it, then leave().
-     Never store passwords client side. This page never does. */
-  async function authenticate(email, password) {
-    // return fetch('/api/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ email, password }) }).then(r => r.ok);
-    return email.includes('@') && password.length > 0;   // demo gate
-  }
-
-  async function enter() {
-    const email = document.getElementById('email').value.trim();
-    const pass = document.getElementById('pass').value;
-    const err = document.getElementById('err');
-    err.style.display = 'none';
-    const ok = await authenticate(email, pass);
-    if (!ok) { err.style.display = 'block'; return; }
+  /* ---------- auth: real Google OAuth, handled entirely by server.py.
+     This page never sees or stores a password or token — it just sends you to
+     /oauth/start, which redirects to Google, then back to /oauth/callback,
+     which sets a session cookie and lands you on index.html signed in. */
+  function enter() {
     if (navigator.vibrate) navigator.vibrate(10);
-    leave();
-  }
-  function leave() {
     document.body.classList.add('leaving');
-    setTimeout(() => { window.location.href = 'hq-preview.html'; }, 750);
+    setTimeout(() => { window.location.href = '/oauth/start'; }, 400);
   }
+  // Dev-only bypass so you can look around before Google OAuth is configured.
+  function skipLogin() {
+    if (navigator.vibrate) navigator.vibrate(10);
+    document.body.classList.add('leaving');
+    setTimeout(() => { window.location.href = '/dev-login'; }, 400);
+  }
+  // If Google/the server bounced back here with an error (denied consent,
+  // no GOOGLE_CLIENT_ID set, etc.), show it instead of silently failing.
+  (function showOAuthError() {
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get('error');
+    if (!error) return;
+    const err = document.getElementById('err');
+    err.textContent = error === 'access_denied' ? 'sign-in was cancelled' : error;
+    err.style.display = 'block';
+  })();
 </script>
 </body>
 </html>
