@@ -133,6 +133,13 @@ class Handler(SimpleHTTPRequestHandler):
         if path == "/dev-login":
             self._dev_login()
             return
+        if path == "/demo":
+            # Public, unauthenticated demo link — loads the redacted Lola
+            # dataset (?demo=lola, see index.html) with no Google sign-in
+            # required, so it can be shared with anyone to preview the app.
+            self.path = "/index.html?demo=lola"
+            super().do_GET()
+            return
         if path == "/api/me":
             session = _session_from_cookie(self)
             if not session:
