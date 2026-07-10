@@ -58,8 +58,20 @@
   .hdr-ws-pop.show { display: block; }
   .crumb-sep { color: var(--gray-2); font-size: 12px; }
   .crumb-cur { font-size: 12px; color: var(--gray-2); }
-  .crumb-connect { font-size: 11px; color: var(--gray-2); margin-left: 10px; cursor: pointer; padding: 2px 7px; border-radius: 20px; border: 1px solid var(--line); }
-  .crumb-connect:hover { color: var(--ink); background: var(--hover); }
+  .crumb-pin { font-size: 11px; color: var(--gray-2); margin-left: 10px; cursor: pointer; padding: 2px 7px; border-radius: 20px; border: 1px solid var(--line); }
+  .crumb-pin:hover { color: var(--ink); background: var(--hover); }
+  .pin-type-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .pin-type-opt { border: 1px solid var(--line); border-radius: 8px; padding: 10px 6px; text-align: center; cursor: pointer; }
+  .pin-type-opt:hover { background: var(--hover); }
+  .pin-type-opt.on { border-color: var(--ink); background: var(--hover); }
+  .pin-type-name { font-size: 12px; font-weight: 700; }
+  .pin-type-sub { font-size: 10.5px; color: var(--gray-2); margin-top: 2px; }
+  .hg-pinned { position: relative; padding-right: 56px; }
+  .pin-unpin {
+    position: absolute; top: 14px; right: 14px; font-size: 10px; color: var(--gray-2);
+    background: none; border: none; cursor: pointer; padding: 2px 6px; border-radius: 5px;
+  }
+  .pin-unpin:hover { color: var(--ink); background: var(--hover); }
   .who { font-size: 11px; color: var(--gray-2); }
   .signout {
     font-size: 11px; color: var(--gray-2); background: none; border: none; cursor: pointer;
@@ -85,7 +97,7 @@
   .home { max-width: 980px; margin: 0 auto; padding: 48px 28px 80px; }
   .home-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gray-2); margin-bottom: 6px; }
   .home-title { font-size: 23px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 3px; }
-  .home-title[contenteditable] { outline: none; cursor: text; border-radius: 5px; padding: 1px 4px; margin-left: -4px; }
+  .home-title[contenteditable] { display: inline-block; max-width: 100%; outline: none; cursor: text; border-radius: 5px; padding: 1px 4px; margin-left: -4px; }
   .home-title[contenteditable]:hover, .home-title[contenteditable]:focus { background: var(--hover); }
   .home-sub { font-size: 11.5px; color: var(--gray-2); margin-bottom: 20px; }
 
@@ -101,6 +113,11 @@
   }
   .widget-title { font-size: 12px; font-weight: 800; letter-spacing: -0.01em; }
   .widget-sub { font-size: 10.5px; color: var(--gray-2); margin-bottom: 8px; }
+  .hg-pages-header { padding: 14px 16px 10px; border-bottom: 1px solid var(--line); }
+  .hg-pages-header .widget-sub { margin-bottom: 0; }
+  .widget-title[contenteditable], .widget-sub[contenteditable] { outline: none; cursor: text; border-radius: 4px; margin-left: -3px; padding: 0 3px; }
+  .widget-title[contenteditable]:hover, .widget-title[contenteditable]:focus,
+  .widget-sub[contenteditable]:hover, .widget-sub[contenteditable]:focus { background: var(--hover); }
   .widget-empty { font-size: 11.5px; color: var(--gray-2); padding: 8px 0; }
   .tl-item { display: flex; align-items: baseline; gap: 9px; padding: 5px 0; border-bottom: 1px solid var(--line-soft); font-size: 11.5px; }
   .tl-item:last-child { border-bottom: none; }
@@ -120,6 +137,13 @@
   }
   .pr-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pr-meta { font-size: 10.5px; color: var(--gray-2); flex-shrink: 0; text-transform: capitalize; }
+  .pin-sheet { font-size: 11px; }
+  .pin-sheet-row { display: flex; gap: 10px; padding: 4px 0; border-bottom: 1px solid var(--line-soft); }
+  .pin-sheet-row:last-child { border-bottom: none; }
+  .pin-sheet-row span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pin-sheet-head span { font-weight: 700; color: var(--gray-2); font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
+  .pin-doc-preview { font-size: 11.5px; line-height: 1.6; color: var(--gray-1); }
+  .pin-doc-preview div { padding: 3px 0; }
   @media (max-width: 760px) {
     .home-grid { grid-template-columns: 1fr; }
     .hg-pages, .hg-schedule, .hg-status, .hg-priority { grid-column: 1; grid-row: auto; }
@@ -162,27 +186,21 @@
   .prow-star.on { color: #d8b34d; }
   .prow:hover .prow-star { color: var(--gray-2); }
   .prow:hover .prow-star.on { color: #d8b34d; }
-  .prow-icon {
-    width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;
-    font-size: 10.5px; color: var(--gray-2); flex-shrink: 0;
-  }
-  .prow-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .prow-name { flex: 0 1 auto; max-width: 70%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .prow-name[contenteditable] { outline: none; cursor: text; }
   .prow-name[contenteditable]:focus { background: var(--hover); border-radius: 4px; }
-  .prow-meta { font-size: 10.5px; color: var(--gray-2); font-weight: 400; flex-shrink: 0; }
+  .prow-spacer { flex: 1; }
   .prow-child { padding-left: 30px; }
   .prow-parent-hint { color: var(--gray-2); margin-right: 2px; font-size: 11px; flex-shrink: 0; }
-  .prow-connected {
-    font-size: 10px; color: var(--gray-2); flex-shrink: 0; text-decoration: underline;
-    text-underline-offset: 2px; cursor: pointer;
+  .prow-pin-badge {
+    font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--gray-2); flex-shrink: 0; padding: 2px 6px; border-radius: 20px; border: 1px solid var(--line);
   }
-  .prow-connected:hover { color: var(--ink); }
   .prow-del {
     display: none; border: none; background: none; color: var(--gray-2); cursor: pointer;
     font-size: 14px; flex-shrink: 0; line-height: 1;
   }
   .prow:hover .prow-del { display: inline; }
-  .prow:hover .prow-meta { display: none; }
   .prow-del:hover { color: var(--ink); }
   .prow-add {
     display: flex; align-items: center; gap: 10px; padding: 9px 12px; cursor: pointer;
@@ -403,23 +421,6 @@
   .modal-field-label { font-size: 10.5px; font-weight: 700; color: var(--gray-2); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .05em; }
   .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 
-  /* ---------- emoji quick-picker popover ---------- */
-  .emoji-pop {
-    display: none; position: absolute; z-index: 60; background: var(--surface-glass); border: 1px solid var(--line);
-    border-radius: 10px; padding: 6px; gap: 2px; box-shadow: 0 10px 30px rgba(0,0,0,.18);
-    backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%);
-  }
-  .emoji-pop.show { display: flex; }
-  .emoji-pop button {
-    font-size: 17px; line-height: 1; padding: 6px 7px; border-radius: 6px; border: none;
-    background: none; cursor: pointer; font-family: inherit;
-  }
-  .emoji-pop button:hover { background: var(--hover); }
-  .emoji-pop .emoji-pop-more {
-    font-size: 10.5px; font-weight: 700; color: var(--gray-2); padding: 6px 7px; border-radius: 6px;
-    border: none; background: none; cursor: pointer; font-family: inherit;
-  }
-  .emoji-pop .emoji-pop-more:hover { background: var(--hover); color: var(--ink); }
   .modal-btn {
     font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 7px; border: 1px solid var(--line);
     background: var(--surface); color: var(--ink); cursor: pointer; font-family: inherit;
@@ -437,27 +438,19 @@
     transition: transform .22s cubic-bezier(.3,1,.4,1);
     backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%);
   }
-  .edge-hover:hover ~ .side-panel, .side-panel:hover { transform: translateX(0); }
-
-  /* ---------- left-edge "connected page" peek: same peel-out mechanic as
-     the side panel, mirrored onto the left edge, only shown when the
-     current page has a connectedTo set ---------- */
-  .edge-hover-left { position: fixed; top: 0; left: 0; width: 14px; height: 100vh; z-index: 40; display: none; }
-  .edge-hover-left.show { display: block; }
-  .connected-peek {
-    position: fixed; top: 0; left: 0; height: 100vh; width: 240px; z-index: 41;
-    background: var(--surface-glass); border-right: 1px solid var(--line);
-    padding: 22px 18px; overflow-y: auto; transform: translateX(-100%);
-    transition: transform .22s cubic-bezier(.3,1,.4,1);
+  .edge-hover:hover ~ .side-panel, .side-panel:hover, body.sp-pinned .side-panel { transform: translateX(0); }
+  header, #app { transition: margin-right .22s cubic-bezier(.3,1,.4,1); }
+  body.sp-pinned header, body.sp-pinned #app { margin-right: 240px; }
+  .sp-handle {
+    position: fixed; top: 50%; right: 0; transform: translateY(-50%); z-index: 42;
+    width: 16px; height: 46px; display: flex; align-items: center; justify-content: center;
+    background: var(--surface-glass); border: 1px solid var(--line); border-right: none;
+    border-radius: 8px 0 0 8px; cursor: pointer; color: var(--gray-2); font-size: 12px;
     backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%);
+    transition: right .22s cubic-bezier(.3,1,.4,1), color .15s;
   }
-  .edge-hover-left:hover ~ .connected-peek, .connected-peek:hover { transform: translateX(0); }
-  .cp-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--gray-2); margin-bottom: 8px; }
-  .cp-name { font-size: 15px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 4px; cursor: pointer; }
-  .cp-name:hover { text-decoration: underline; }
-  .cp-meta { font-size: 11.5px; color: var(--gray-2); margin-bottom: 14px; }
-  .cp-preview { font-size: 12px; line-height: 1.6; color: var(--gray-1); margin-bottom: 16px; }
-  .cp-actions { display: flex; gap: 8px; }
+  .sp-handle:hover { color: var(--ink); }
+  body.sp-pinned .sp-handle { right: 240px; }
 
   /* ---------- collapse/expand toggle for pages that have subpages ---------- */
   .prow-collapse, .sp-collapse {
@@ -472,7 +465,6 @@
   .sp-pages { display: flex; flex-direction: column; gap: 1px; }
   .sp-page { display: flex; align-items: center; gap: 8px; padding: 6px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
   .sp-page:hover { background: var(--hover); }
-  .sp-page .pi { font-size: 11px; flex-shrink: 0; width: 16px; text-align: center; color: var(--gray-2); }
   .sp-page-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .sp-page-name[contenteditable] { outline: none; cursor: text; }
   .sp-page-name[contenteditable]:focus { background: var(--hover); border-radius: 4px; }
@@ -544,10 +536,6 @@
   .ob-chip { font-size: 12px; font-weight: 600; padding: 7px 12px; border-radius: 20px; border: 1px solid var(--line); cursor: pointer; color: var(--gray-1); }
   .ob-chip.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 
-  /* ---------- page icon/emoji: click to customize ---------- */
-  .prow-icon, .pi { cursor: pointer; }
-  .prow-icon:hover, .pi:hover { transform: scale(1.2); }
-
   /* ---------- weather backdrop: soft, slow, alive ---------- */
   .bg-weather {
     position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
@@ -594,10 +582,8 @@
 
 <div id="app"></div>
 
-<div class="edge-hover-left" id="edge-hover-left"></div>
-<aside class="connected-peek" id="connected-peek"></aside>
-
 <div class="edge-hover" id="edge-hover"></div>
+<div class="sp-handle" id="sp-handle" onclick="toggleSidePanelPinned()" title="Pin panel open">&lsaquo;</div>
 <aside class="side-panel" id="side-panel">
   <div class="sp-section">
     <div class="sp-label">Appearance</div>
@@ -684,10 +670,37 @@
   </div>
 </div>
 
+<div class="modal-backdrop" id="pin-backdrop" onclick="if(event.target===this) closePinModal()">
+  <div class="modal-card">
+    <div class="modal-title">Pin to home dashboard</div>
+    <div class="modal-hint">Surface this page as a live widget on your home screen &mdash; pick how it should look.</div>
+    <div class="pin-type-grid" id="pin-type-grid">
+      <div class="pin-type-opt" data-type="visual" onclick="choosePinType('visual')">
+        <div class="pin-type-name">Visual</div>
+        <div class="pin-type-sub">Progress bar</div>
+      </div>
+      <div class="pin-type-opt" data-type="timeline" onclick="choosePinType('timeline')">
+        <div class="pin-type-name">Timeline</div>
+        <div class="pin-type-sub">Dated list</div>
+      </div>
+      <div class="pin-type-opt" data-type="sheet" onclick="choosePinType('sheet')">
+        <div class="pin-type-name">Sheet / doc</div>
+        <div class="pin-type-sub">Live preview</div>
+      </div>
+    </div>
+    <div class="modal-field-label">Widget title</div>
+    <input class="modal-input" id="pin-label" placeholder="Widget title" />
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closePinModal()">Cancel</button>
+      <button class="modal-btn primary" onclick="submitPin()">Pin to home</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="newnote-backdrop" onclick="if(event.target===this) closeNewNote()">
   <div class="modal-card">
     <div class="modal-title">New note</div>
-    <div class="modal-hint">Give it a name and it opens immediately so you can start writing. The two options below are separate: one nests it in the page list, the other links it to another page.</div>
+    <div class="modal-hint">Give it a name and it opens immediately so you can start writing. Nest it under an existing page, or leave it top-level &mdash; you can pin any page to the home dashboard as a live widget later.</div>
     <input class="modal-input" id="newnote-name" placeholder="Note name" />
     <div class="modal-field-label">Type</div>
     <select class="modal-select" id="newnote-type">
@@ -698,11 +711,6 @@
     <select class="modal-select" id="newnote-parent">
       <option value="">Top level (its own row on the home page)</option>
     </select>
-    <div class="modal-field-label">Connected to <span style="font-weight:400;color:var(--gray-2);">&mdash; links it to another page, optional</span></div>
-    <select class="modal-select" id="newnote-connected">
-      <option value="">No connection</option>
-    </select>
-    <div class="modal-hint" style="margin-top:-2px;margin-bottom:0;">Once connected, a peek panel on the left edge of that page shows this note (and vice versa) &mdash; you can change or remove the connection anytime from there.</div>
     <div class="modal-actions">
       <button class="modal-btn" onclick="closeNewNote()">Cancel</button>
       <button class="modal-btn primary" onclick="submitNewNote()">Create &amp; open</button>
@@ -710,7 +718,6 @@
   </div>
 </div>
 
-<div class="emoji-pop" id="emoji-pop"></div>
 
 <div class="onboard-backdrop" id="onboard-backdrop">
   <div class="onboard-card">
@@ -797,6 +804,22 @@
     applyFocusMode();
   }
   applyFocusMode();
+
+  /* ---------- side panel pin: by default the panel only peels out on hover;
+     this lets it be pinned open as a real stationary sidebar that pushes the
+     header/app content over, toggled via the little handle tab on the edge ---------- */
+  function applySidePanelPinned() {
+    const on = localStorage.getItem('hq_sp_pinned') === '1';
+    document.body.classList.toggle('sp-pinned', on);
+    const handle = document.getElementById('sp-handle');
+    if (handle) handle.innerHTML = on ? '&rsaquo;' : '&lsaquo;';
+  }
+  function toggleSidePanelPinned() {
+    const on = !document.body.classList.contains('sp-pinned');
+    localStorage.setItem('hq_sp_pinned', on ? '1' : '0');
+    applySidePanelPinned();
+  }
+  applySidePanelPinned();
 
   /* ---------- who's signed in: see boot() near the bottom, which handles
      /api/me plus loading the right workspace's data ---------- */
@@ -1036,6 +1059,29 @@
 
   let pages = SEED_PAGES;
   function savePages() { saveWorkspaceData(); touchActivity(); }
+  /* ---------- home widget labels: the built-in "Next few days" / "Job
+     status" / "What to work on today" headers are editable, same as page
+     titles \u2014 overrides are stored per-workspace, defaults fill in the rest ---------- */
+  function defaultWidgetLabels() {
+    return {
+      pages: { title: 'Pages', sub: 'Everything in your workspace' },
+      schedule: { title: 'Next few days', sub: 'Living timeline \u00b7 posting & delivery dates' },
+      status: { title: 'Job status', sub: 'Across all jobs' },
+      priority: { title: 'What to work on today', sub: 'Ranked across open jobs & objects' }
+    };
+  }
+  let widgetLabels = defaultWidgetLabels();
+  function setWidgetLabel(key, field, val) {
+    if (!widgetLabels[key]) widgetLabels[key] = {};
+    widgetLabels[key][field] = val;
+    saveWorkspaceData();
+  }
+  function widgetHeaderHTML(key) {
+    const d = defaultWidgetLabels()[key];
+    const l = widgetLabels[key] || d;
+    return '<div class="widget-title" contenteditable spellcheck="false" oninput="setWidgetLabel(\'' + key + '\',\'title\', this.textContent)">' + esc(l.title) + '</div>' +
+      '<div class="widget-sub" contenteditable spellcheck="false" oninput="setWidgetLabel(\'' + key + '\',\'sub\', this.textContent)">' + esc(l.sub) + '</div>';
+  }
   function touchActivity() { localStorage.setItem('hq_last_active', String(Date.now())); }
   function timeAgo() {
     const ts = Number(localStorage.getItem('hq_last_active') || 0);
@@ -1134,52 +1180,6 @@
     });
   }
 
-  function pageMeta(p) {
-    if (p.emoji) {
-      if (p.type === 'group') return { icon: p.emoji, meta: cats.length + (cats.length === 1 ? ' table' : ' tables') };
-      if (p.type === 'doc') return { icon: p.emoji, meta: p.blocks.length + (p.blocks.length === 1 ? ' section' : ' sections') };
-      return { icon: p.emoji, meta: p.rows.length + (p.rows.length === 1 ? ' row' : ' rows') };
-    }
-    if (p.type === 'group') return { icon: '\u25a6', meta: cats.length + (cats.length === 1 ? ' table' : ' tables') };
-    if (p.type === 'doc') return { icon: '\u00b6', meta: p.blocks.length + (p.blocks.length === 1 ? ' section' : ' sections') };
-    return { icon: '\u25a2', meta: p.rows.length + (p.rows.length === 1 ? ' row' : ' rows') };
-  }
-  /* ---------- page icon: quick pick from a set of 5 monochrome glyphs (no
-     color emoji — these are plain text symbols, so they follow the app's
-     ink color in both light and dark mode), or "\u2026" for a custom one ---------- */
-  const EMOJI_PRESETS = ['\u25a4', '\u2630', '\u25a3', '\u270e', '\u25ce'];
-  function openEmojiPicker(key, el) {
-    const pop = document.getElementById('emoji-pop');
-    const rect = el.getBoundingClientRect();
-    pop.innerHTML = EMOJI_PRESETS.map(e => '<button onclick="pickEmoji(\'' + key + '\',\'' + e + '\')">' + e + '</button>').join('') +
-      '<button class="emoji-pop-more" onclick="pickEmojiCustom(\'' + key + '\')">\u2026</button>';
-    pop.style.top = (window.scrollY + rect.bottom + 4) + 'px';
-    pop.style.left = (window.scrollX + rect.left) + 'px';
-    pop.classList.add('show');
-  }
-  function closeEmojiPicker() { document.getElementById('emoji-pop').classList.remove('show'); }
-  function pickEmoji(key, emoji) {
-    const p = pages.find(x => x.key === key);
-    if (!p) return;
-    p.emoji = emoji;
-    savePages();
-    closeEmojiPicker();
-    render();
-  }
-  function pickEmojiCustom(key) {
-    const p = pages.find(x => x.key === key);
-    if (!p) return;
-    closeEmojiPicker();
-    const val = prompt('Set a custom emoji for this page:', p.emoji || '');
-    if (val === null) return;
-    p.emoji = val.trim();
-    savePages();
-    render();
-  }
-  document.addEventListener('click', function (e) {
-    const pop = document.getElementById('emoji-pop');
-    if (pop.classList.contains('show') && !pop.contains(e.target) && !e.target.closest('.prow-icon')) closeEmojiPicker();
-  });
   let workspaceName = 'Your Workspace';
   function saveWorkspaceName(name) {
     workspaceName = name;
@@ -1203,7 +1203,7 @@
       fetch('/api/workspaces/' + currentWorkspaceId + '/data', {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ pages, categories: cats })
+        body: JSON.stringify({ pages, categories: cats, widgets: { labels: widgetLabels, pinned: pinnedWidgets } })
       }).catch(() => {});
     }, 400);
   }
@@ -1358,17 +1358,15 @@
   function homeHTML() {
     const pagesListHTML = orderedPagesForDisplay().map(entry => {
       const p = entry.page;
-      const m = pageMeta(p);
-      const connected = p.connectedTo ? pages.find(x => x.key === p.connectedTo) : null;
+      const isPinned = pinnedWidgets.some(w => w.sourceKey === p.key);
       const collapsed = collapsedPages.has(p.key);
       const hideAsChild = entry.isChild && collapsedPages.has(entry.parentKey);
       return '<div class="prow' + (entry.isChild ? ' prow-child' : '') + (hideAsChild ? ' collapsed-child' : '') + '" data-signal="' + (p.signal ? 1 : 0) + '" onclick="openPage(\'' + p.key + '\')">' +
         '<span class="prow-star' + (p.signal ? ' on' : '') + '" onclick="event.stopPropagation(); toggleSignal(\'' + p.key + '\')" title="Mark as signal">' + (p.signal ? '\u2605' : '\u2606') + '</span>' +
         (entry.hasChildren ? '<span class="prow-collapse' + (collapsed ? '' : ' open') + '" onclick="event.stopPropagation(); toggleCollapse(\'' + p.key + '\')" title="Show/hide subpages">\u25b6</span>' : (entry.isChild ? '<span class="prow-parent-hint">\u21b3</span>' : '')) +
-        '<span class="prow-icon" onclick="event.stopPropagation(); openEmojiPicker(\'' + p.key + '\', this)" title="Click to change icon">' + m.icon + '</span>' +
         '<span class="prow-name" id="prowname-' + p.key + '" contenteditable spellcheck="false" onclick="event.stopPropagation()" oninput="renamePage(\'' + p.key + '\', this.textContent)">' + esc(p.label) + '</span>' +
-        (connected ? '<span class="prow-connected" onclick="event.stopPropagation(); openPage(\'' + connected.key + '\')" title="Connected page">\u2192 ' + esc(connected.label) + '</span>' : '') +
-        '<span class="prow-meta">' + m.meta + '</span>' +
+        '<span class="prow-spacer"></span>' +
+        (isPinned ? '<span class="prow-pin-badge" title="Pinned to home dashboard">pinned</span>' : '') +
         '<button class="prow-del" onclick="event.stopPropagation(); delPage(\'' + p.key + '\')" title="Delete">\u00d7</button>' +
         '</div>';
     }).join('') +
@@ -1381,16 +1379,17 @@
       '<div class="home-sub">' + pages.length + ' pages</div>' +
       '<div class="home-freshness">&#9679; ' + timeAgo() + '</div>' +
       '<div class="home-grid">' +
-      '<div class="hg-pages page-list">' + pagesListHTML + '</div>' +
+      '<div class="hg-pages page-list"><div class="hg-pages-header">' + widgetHeaderHTML('pages') + '</div>' + pagesListHTML + '</div>' +
       '<div class="hg-schedule widget-card">' +
-      '<div class="widget-title">Next few days</div><div class="widget-sub">Living timeline &middot; posting &amp; delivery dates</div>' +
+      widgetHeaderHTML('schedule') +
       scheduleHTML() + '</div>' +
       '<div class="hg-status widget-card">' +
-      '<div class="widget-title">Job status</div><div class="widget-sub">Across all jobs</div>' +
+      widgetHeaderHTML('status') +
       statusHTML() + '</div>' +
       '<div class="hg-priority widget-card">' +
-      '<div class="widget-title">What to work on today</div><div class="widget-sub">Ranked across open jobs &amp; objects</div>' +
+      widgetHeaderHTML('priority') +
       priorityHTML() + '</div>' +
+      pinnedWidgetsHTML() +
       '</div></div>';
   }
 
@@ -1398,12 +1397,10 @@
   function renderSidePanel() {
     document.getElementById('sp-pages').innerHTML = orderedPagesForDisplay().map(entry => {
       const p = entry.page;
-      const m = pageMeta(p);
       const collapsed = collapsedPages.has(p.key);
       const hideAsChild = entry.isChild && collapsedPages.has(entry.parentKey);
       return '<div class="sp-page' + (hideAsChild ? ' collapsed-child' : '') + '" onclick="openPage(\'' + p.key + '\')">' +
         (entry.hasChildren ? '<span class="sp-collapse' + (collapsed ? '' : ' open') + '" onclick="event.stopPropagation(); toggleCollapse(\'' + p.key + '\')">\u25b6</span>' : '') +
-        '<span class="pi">' + m.icon + '</span>' +
         '<span class="sp-page-name" id="spname-' + p.key + '" contenteditable spellcheck="false" onclick="event.stopPropagation()" oninput="renamePage(\'' + p.key + '\', this.textContent)">' + esc(p.label) + '</span>' +
         '</div>';
     }).join('');
@@ -1414,23 +1411,7 @@
     if (view === 'home') { el.innerHTML = ''; return; }
     const p = pages.find(x => x.key === view);
     el.innerHTML = '<span class="crumb-sep"> / </span><span class="crumb-cur">' + esc(p ? p.label : '') + '</span>' +
-      (p ? '<span class="crumb-connect" onclick="openConnectPicker(\'' + p.key + '\')" title="Connect this page to another">' +
-        (p.connectedTo ? '\u2192 connected' : '+ connect') + '</span>' : '');
-  }
-  function openConnectPicker(key) {
-    const target = prompt(
-      'Type the exact name of the page to connect to (blank to remove connection):\n\n' +
-      pages.filter(x => x.key !== key && x.type !== 'group').map(x => '\u2022 ' + x.label).join('\n')
-    );
-    if (target === null) return;
-    const p = pages.find(x => x.key === key);
-    if (!p) return;
-    if (!target.trim()) { p.connectedTo = null; savePages(); render(); return; }
-    const match = pages.find(x => x.label.toLowerCase() === target.trim().toLowerCase() && x.key !== key);
-    if (!match) { alert('No page found with that exact name.'); return; }
-    p.connectedTo = match.key;
-    savePages();
-    render();
+      (p && p.type !== 'group' ? '<span class="crumb-pin" onclick="openPinModal(\'' + p.key + '\')" title="Pin this page to the home dashboard">+ pin to home</span>' : '');
   }
 
   /* =====================================================================
@@ -2092,7 +2073,6 @@
     const opts = pages.filter(p => p.type !== 'group')
       .map(p => '<option value="' + p.key + '">' + esc(p.label) + '</option>').join('');
     document.getElementById('newnote-parent').innerHTML = '<option value="">Top level</option>' + opts;
-    document.getElementById('newnote-connected').innerHTML = '<option value="">Nothing yet</option>' + opts;
     document.getElementById('newnote-name').value = '';
     document.getElementById('newnote-type').value = 'doc';
     document.getElementById('newnote-backdrop').classList.add('show');
@@ -2105,11 +2085,10 @@
     if (!name) { nameEl.focus(); return; }
     const type = document.getElementById('newnote-type').value;
     const parent = document.getElementById('newnote-parent').value || null;
-    const connectedTo = document.getElementById('newnote-connected').value || null;
     const key = name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now().toString(36).slice(-4);
     const page = type === 'doc'
-      ? { key: key, label: name, type: 'doc', parent: parent, connectedTo: connectedTo, blocks: [{ t: 'h2', html: name }] }
-      : { key: key, label: name, type: 'table', parent: parent, connectedTo: connectedTo, cols: ['Item', 'Status', 'Notes'], rows: [['', '', '']] };
+      ? { key: key, label: name, type: 'doc', parent: parent, blocks: [{ t: 'h2', html: name }] }
+      : { key: key, label: name, type: 'table', parent: parent, cols: ['Item', 'Status', 'Notes'], rows: [['', '', '']] };
     pages.push(page);
     savePages();
     closeNewNote();
@@ -2120,7 +2099,6 @@
   function render() {
     renderCrumb();
     renderSidePanel();
-    renderConnectedPeek();
     const app = document.getElementById('app');
     if (view === 'home') {
       app.innerHTML = homeHTML();
@@ -2140,50 +2118,105 @@
   }
 
   /* =====================================================================
-     CONNECTED PAGE PEEK: when the open page has a connectedTo set, a
-     left-edge peel-out panel (mirrors the right-edge side panel) shows a
-     preview of that page and lets you jump to it or disconnect \u2014 this
-     replaces guessing what the "connected to" dropdown does with a live
-     visual result you can actually interact with.
+     PIN TO HOME DASHBOARD: any page (or a subpage nested under one) can be
+     pinned as a live widget on the home screen \u2014 three shapes to choose
+     from, styled and behaving just like the built-in schedule/status/
+     priority widgets above. Replaces the old page-to-page "connected to"
+     link, which people found confusing (it just meant "this page has a
+     pill on that page"); pinning has a real, visible result instead.
      ===================================================================== */
-  function renderConnectedPeek() {
-    const edge = document.getElementById('edge-hover-left');
-    const peek = document.getElementById('connected-peek');
-    const p = curPage();
-    const connected = p && p.connectedTo ? pages.find(x => x.key === p.connectedTo) : null;
-    if (!connected) {
-      edge.classList.remove('show');
-      peek.innerHTML = '';
-      return;
-    }
-    edge.classList.add('show');
-    const m = pageMeta(connected);
-    peek.innerHTML =
-      '<div class="cp-label">Connected to</div>' +
-      '<div class="cp-name" onclick="openPage(\'' + connected.key + '\')">' + m.icon + ' ' + esc(connected.label) + '</div>' +
-      '<div class="cp-meta">' + m.meta + '</div>' +
-      '<div class="cp-preview">' + connectedPreviewHTML(connected) + '</div>' +
-      '<div class="cp-actions">' +
-      '<button class="modal-btn primary" onclick="openPage(\'' + connected.key + '\')">Open</button>' +
-      '<button class="modal-btn" onclick="disconnectPage(\'' + p.key + '\')">Disconnect</button>' +
-      '</div>';
-  }
-  function connectedPreviewHTML(p) {
-    if (p.type === 'doc') {
-      const first = (p.blocks || []).find(b => b.html);
-      return first ? esc((first.html || '').replace(/<[^>]+>/g, '')).slice(0, 140) : 'Empty note.';
-    }
-    if (p.type === 'table' && p.rows && p.rows.length) {
-      return esc(p.rows[0].filter(Boolean).join(' \u00b7 ')).slice(0, 140);
-    }
-    return 'No preview available.';
-  }
-  function disconnectPage(key) {
+  let pinnedWidgets = [];
+  let pinModalKey = null;
+  let pinModalType = 'visual';
+  function openPinModal(key) {
+    pinModalKey = key;
+    pinModalType = 'visual';
     const p = pages.find(x => x.key === key);
-    if (!p) return;
-    p.connectedTo = null;
-    savePages();
+    document.getElementById('pin-label').value = p ? p.label : '';
+    document.querySelectorAll('#pin-type-grid .pin-type-opt').forEach(el => el.classList.toggle('on', el.dataset.type === pinModalType));
+    document.getElementById('pin-backdrop').classList.add('show');
+  }
+  function closePinModal() { document.getElementById('pin-backdrop').classList.remove('show'); }
+  function choosePinType(type) {
+    pinModalType = type;
+    document.querySelectorAll('#pin-type-grid .pin-type-opt').forEach(el => el.classList.toggle('on', el.dataset.type === type));
+  }
+  function submitPin() {
+    if (!pinModalKey) return;
+    const label = document.getElementById('pin-label').value.trim();
+    pinnedWidgets.push({ id: 'pin-' + Date.now().toString(36).slice(-6), sourceKey: pinModalKey, type: pinModalType, label: label || 'Widget' });
+    saveWorkspaceData();
+    closePinModal();
+    goHome();
+    showToast('Pinned to home');
+  }
+  function unpinWidget(id) {
+    pinnedWidgets = pinnedWidgets.filter(w => w.id !== id);
+    saveWorkspaceData();
     render();
+  }
+  function renamePinnedWidget(id, text) {
+    const w = pinnedWidgets.find(x => x.id === id);
+    if (!w) return;
+    w.label = text;
+    saveWorkspaceData();
+  }
+  function pinnedWidgetsHTML() {
+    return pinnedWidgets.map(w => {
+      const src = pages.find(x => x.key === w.sourceKey);
+      const body = !src ? '<div class="widget-empty">Source page was deleted.</div>' :
+        w.type === 'visual' ? pinnedVisualHTML(src) :
+        w.type === 'timeline' ? pinnedTimelineHTML(src) : pinnedSheetHTML(src);
+      return '<div class="widget-card hg-pinned">' +
+        '<button class="pin-unpin" onclick="unpinWidget(\'' + w.id + '\')" title="Unpin from home">Unpin</button>' +
+        '<div class="widget-title" contenteditable spellcheck="false" oninput="renamePinnedWidget(\'' + w.id + '\', this.textContent)">' + esc(w.label) + '</div>' +
+        '<div class="widget-sub">' + (src ? esc(src.label) : 'Missing page') + '</div>' +
+        body + '</div>';
+    }).join('');
+  }
+  function pinnedVisualHTML(p) {
+    if (p.type === 'table' && p.rows && p.rows.length) {
+      ensureColTypes(p);
+      const ci = p.colTypes.indexOf('checkbox');
+      if (ci < 0) return '<div class="widget-empty">Add a checkbox column on this page to show progress.</div>';
+      const done = p.rows.filter(r => /^(true|yes|1|x|done)$/i.test((r[ci] || '').trim())).length;
+      const pct = Math.round(done / p.rows.length * 100);
+      return '<div class="st-row"><span class="st-label">Complete</span>' +
+        '<span class="st-bar-wrap"><span class="st-bar" style="width:' + pct + '%"></span></span>' +
+        '<span class="st-count">' + done + '/' + p.rows.length + '</span></div>';
+    }
+    return '<div class="widget-empty">Visual needs a table page with a checkbox column.</div>';
+  }
+  function pinnedTimelineHTML(p) {
+    if (p.type === 'table' && p.rows && p.rows.length) {
+      const dateCol = p.cols.findIndex(c => /date/i.test(c));
+      if (dateCol < 0) return '<div class="widget-empty">Add a date column on this page to show a timeline.</div>';
+      const labelCol = dateCol === 0 && p.cols.length > 1 ? 1 : 0;
+      const items = p.rows.map(r => ({ date: parseLooseDate(r[dateCol]), label: r[labelCol] }))
+        .filter(x => x.date).sort((a, b) => a.date - b.date).slice(0, 8);
+      if (!items.length) return '<div class="widget-empty">Nothing dated yet.</div>';
+      return items.map(it => '<div class="tl-item"><span class="tl-date">' + fmtShort(it.date) + '</span>' +
+        '<span class="tl-label">' + esc(it.label || '') + '</span></div>').join('');
+    }
+    if (p.type === 'doc' && p.blocks && p.blocks.length) {
+      const heads = p.blocks.filter(b => b.t === 'h2' || b.t === 'h3').slice(0, 8);
+      if (!heads.length) return '<div class="widget-empty">Add some headings on this page to show a timeline.</div>';
+      return heads.map(b => '<div class="tl-item"><span class="tl-label">' + esc((b.html || '').replace(/<[^>]+>/g, '')) + '</span></div>').join('');
+    }
+    return '<div class="widget-empty">No timeline available.</div>';
+  }
+  function pinnedSheetHTML(p) {
+    if (p.type === 'table' && p.rows && p.rows.length) {
+      const cols = p.cols.slice(0, 3);
+      return '<div class="pin-sheet">' +
+        '<div class="pin-sheet-row pin-sheet-head">' + cols.map(c => '<span>' + esc(c) + '</span>').join('') + '</div>' +
+        p.rows.slice(0, 6).map(r => '<div class="pin-sheet-row">' + cols.map((c, i) => '<span>' + esc(r[i] || '') + '</span>').join('') + '</div>').join('') +
+        '</div>';
+    }
+    if (p.type === 'doc' && p.blocks && p.blocks.length) {
+      return '<div class="pin-doc-preview">' + p.blocks.slice(0, 3).map(b => '<div>' + esc((b.html || '').replace(/<[^>]+>/g, '')).slice(0, 90) + '</div>').join('') + '</div>';
+    }
+    return '<div class="widget-empty">No preview available.</div>';
   }
 
   /* =====================================================================
@@ -2282,6 +2315,8 @@
         pages = data.pages;
         cats = data.categories || SEED_CATS;
       }
+      widgetLabels = Object.assign(defaultWidgetLabels(), (data.widgets && data.widgets.labels) || {});
+      pinnedWidgets = (data.widgets && data.widgets.pinned) || [];
       activeKey = localStorage.getItem('hq_active_cat') || cats[0].key;
       maybeLoadLolaDemo(); // also sets hq_onboarded, so maybeOnboard() below is a no-op when it fires
       render();

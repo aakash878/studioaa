@@ -14,7 +14,7 @@ and adds:
   - GET  /api/workspaces                       workspaces the signed-in user belongs to.
   - POST /api/workspaces                       create a new workspace (caller becomes owner).
   - PATCH /api/workspaces/<id>                 rename a workspace (owner-only).
-  - GET  /PUT /api/workspaces/<id>/data         read/write a workspace's pages+categories.
+  - GET  /PUT /api/workspaces/<id>/data         read/write a workspace's pages+categories+widgets.
   - GET  /POST /api/workspaces/<id>/members     list / invite members (owner-only).
   - DELETE /api/workspaces/<id>/members/<email> remove a member or pending invite (owner-only).
 index.html/login.html gate on that session: visiting index.html while signed
@@ -164,6 +164,7 @@ def init_db():
                 categories JSONB,
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
             );
+            ALTER TABLE workspace_data ADD COLUMN IF NOT EXISTS widgets JSONB;
         """)
         conn.commit()
 
@@ -303,11 +304,15 @@ class Handler(SimpleHTTPRequestHandler):
                     self._reply(403, {"error": "not a member of this workspace"})
                     return
                 cur.execute(
-                    "SELECT pages, categories FROM workspace_data WHERE workspace_id = %s",
+                    "SELECT pages, categories, widgets FROM workspace_data WHERE workspace_id = %s",
                     (workspace_id,),
                 )
                 row = cur.fetchone()
-            self._reply(200, {"pages": row[0] if row else None, "categories": row[1] if row else None})
+            self._reply(200, {
+                "pages": row[0] if row else None,
+                "categories": row[1] if row else None,
+                "widgets": row[2] if row else None,
+            })
             return
         m = WORKSPACE_MEMBERS_RE.match(path)
         if m:
@@ -363,12 +368,13 @@ class Handler(SimpleHTTPRequestHandler):
                 return
             cur.execute(
                 """
-                UPDATE workspace_data SET pages = %s, categories = %s, updated_at = now()
+                UPDATE workspace_data SET pages = %s, categories = %s, widgets = %s, updated_at = now()
                 WHERE workspace_id = %s
                 """,
                 (
                     psycopg2.extras.Json(body.get("pages")),
                     psycopg2.extras.Json(body.get("categories")),
+                    psycopg2.extras.Json(body.get("widgets")),
                     workspace_id,
                 ),
             )
