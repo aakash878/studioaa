@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lola Operations · Studio Aa</title>
+<title>HQ · Studio Aa</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,600;14..32,700,14..32,800&display=swap');
   :root {
@@ -522,7 +522,7 @@
   <div class="onboard-card">
     <div class="ob-step on" id="ob-step-0">
       <div class="ob-title">Welcome to your HQ</div>
-      <div class="ob-sub">We help you build whatever's next &mdash; a seed round, a clothing brand, a client roster, a tour. This is a quiet home base for that work: pages, tables, and docs that grow as it comes in. Takes about 20 seconds to set up.</div>
+      <div class="ob-sub">This starts blank on purpose. The real value is what you bring in &mdash; your Notes app, your Google Sheets, your Google Docs, whatever you're already using to track things. Onboarding pulls that in so Studio Aa can see how you actually work, and build you a sharper framework around it over time. Takes about 20 seconds to set up.</div>
       <div class="ob-actions">
         <span></span>
         <button class="ob-next" onclick="obGoto(1)">Let's go</button>
@@ -531,7 +531,7 @@
     <div class="ob-step" id="ob-step-1">
       <div class="ob-title">Name this workspace</div>
       <div class="ob-sub">Shown at the top of your home page. You can change it later.</div>
-      <input class="ob-input" id="ob-name-input" placeholder="e.g. Lola Operations" />
+      <input class="ob-input" id="ob-name-input" placeholder="e.g. Acme Studio Ops" />
       <div class="ob-actions">
         <button class="ob-skip" onclick="obGoto(2)">Skip</button>
         <button class="ob-next" onclick="obSetName()">Next</button>
@@ -550,11 +550,16 @@
       </div>
     </div>
     <div class="ob-step" id="ob-step-3">
-      <div class="ob-title">Bring in your first page</div>
-      <div class="ob-sub">Paste in notes, a doc, or a spreadsheet you already track things with &mdash; or just start blank and add pages as work comes in.</div>
+      <div class="ob-title">Bring in what you already use</div>
+      <div class="ob-sub">Paste in from wherever your organizational tooling actually lives right now. The more we capture here, the better the framework we can build you next.</div>
+      <div class="ob-chips ob-import-sources">
+        <span class="ob-chip" onclick="obImport('notes')">Notes app</span>
+        <span class="ob-chip" onclick="obImport('sheets')">Google Sheets</span>
+        <span class="ob-chip" onclick="obImport('docs')">Google Docs</span>
+      </div>
       <div class="ob-actions">
         <button class="ob-skip" onclick="obFinish()">Start blank</button>
-        <button class="ob-next" onclick="obImport()">Paste something in</button>
+        <button class="ob-next" onclick="obImport()">Paste something else in</button>
       </div>
     </div>
   </div>
@@ -692,7 +697,17 @@
     if (!blocks.length) blocks.push({ t: 'p', html: 'Type something\u2026' });
     return blocks;
   }
-  function openImport() {
+  const IMPORT_SOURCE_COPY = {
+    notes: { hint: 'Paste in from your Notes app &mdash; a list, a project note, whatever\u2019s in there. It\u2019ll figure out if it\u2019s a table or a doc.', placeholder: 'Paste your note here\u2026' },
+    sheets: { hint: 'Paste in a Google Sheets export (copy the cells, or paste a CSV) and it\u2019ll come in as a live table.', placeholder: 'Paste your sheet/CSV here\u2026' },
+    docs: { hint: 'Paste in text copied from a Google Doc and it\u2019ll come in as a written page.', placeholder: 'Paste your doc here\u2026' }
+  };
+  function openImport(source) {
+    const copy = IMPORT_SOURCE_COPY[source];
+    document.querySelector('#import-backdrop .modal-hint').innerHTML = copy
+      ? copy.hint
+      : 'Paste a spreadsheet/CSV export for a table, or notes and doc text for a written page &mdash; it\u2019ll figure out which.';
+    document.getElementById('import-text').placeholder = copy ? copy.placeholder : 'Paste your notes, doc, or sheet here\u2026';
     document.getElementById('import-name').value = '';
     document.getElementById('import-text').value = '';
     document.getElementById('import-backdrop').classList.add('show');
@@ -722,67 +737,29 @@
   }
 
   /* =====================================================================
-     HOME: the "Lola Operations" hub — a flat list of pages, same shape as
-     the Notion list view it's meant to replace. "job sheet" is a group
-     (it opens the categorized job-sheet tables below); everything else
-     starts as a single blank table you fill in as that work shows up.
+     HOME: the workspace hub — a flat list of pages, same shape as the
+     Notion/Sheets/Docs list view it's meant to replace. "job sheet" is a
+     group (it opens the categorized job-sheet tables below); everything
+     else starts as a single blank table or doc, meant to be filled in by
+     importing what the client already tracks things in, not by us
+     pre-guessing their structure.
      ===================================================================== */
   const SEED_PAGES = [
     { key: 'job-sheet', label: 'job sheet', type: 'group' },
     { key: 'rate-sheet', label: 'rate sheet', type: 'doc', blocks: [
-      { t: 'h2', html: 'Lola Dement Myers: Current Rate Theory (Q1 2026)' },
-      { t: 'p', html: '<strong>Overview:</strong> These rates reflect a multidisciplinary practice across photography, design, and performance, supported by a total reach of 20k+ and a proven portfolio of high-level execution.' },
+      { t: 'h2', html: 'Rate Sheet (example template)' },
+      { t: 'p', html: '<strong>Overview:</strong> Replace this with your own rates during onboarding \u2014 import a doc or sheet you already have, or edit this template directly.' },
       { t: 'hr' },
-      { t: 'h3', html: 'Social Media &amp; Promotion' },
-      { t: 'p', html: '<em>Rates are per individual post/frame. Bundling available upon request.</em>' },
+      { t: 'h3', html: 'Category' },
       { t: 'table', cols: ['Category', 'Story Post', 'Feed Post'], rows: [
-        ['<strong>Corporate / Brand</strong>', '$450', '$2,000 \u2013 $2,500+'],
-        ['<strong>Creative Peer / Colleague</strong>', '$250', '$1,000 \u2013 $1,250'],
-        ['<strong>Friend / Direct Alignment</strong>', '$150', '$1,000']
-      ] },
-      { t: 'hr' },
-      { t: 'h3', html: 'Photography &amp; Image Consulting' },
-      { t: 'ul', items: [
-        { html: '<strong>Standard Editorial Image:</strong> $500 (Baseline)' },
-        { html: '<strong>Shoot Day Minimum (Standard):</strong> $1,500' },
-        { html: '<strong>Shoot Day Minimum (Corporate):</strong> $3,500' },
-        { html: '<strong>Hourly Revision/Editing Fee:</strong> $200 / hour' }
-      ] },
-      { t: 'hr' },
-      { t: 'h3', html: 'Creative Direction &amp; Design' },
-      { t: 'ul', items: [
-        { html: '<strong>Album Cover Design:</strong> $5,000 minimum', sub: [
-          { html: '<em>Subject to scale based on artist reach and label backing.</em>' }
-        ] },
-        { html: '<strong>Standard Flyer Design:</strong> $1,000' },
-        { html: '<strong>Friend/Affiliate Flyer Design:</strong> $600 \u2013 $850' },
-        { html: '<strong>Editorial Images (Publications):</strong>', sub: [
-          { html: '<strong>High-Scale:</strong> $1,000 per image' },
-          { html: '<strong>Indie / New Magazine:</strong> $500 per image' }
-        ] }
-      ] },
-      { t: 'hr' },
-      { t: 'h3', html: 'Performances &amp; Music Video' },
-      { t: 'ul', items: [
-        { html: '<strong>Music Video Direction (Minimum):</strong> $5,000', sub: [
-          { html: '<em>Excludes equipment/rentals.</em>' },
-          { html: '<strong>Major Label / Backed:</strong> $10,000+' },
-          { html: '<strong>Independent:</strong> $3,000 \u2013 $5,000' }
-        ] },
-        { html: '<strong>Live Physical Performance:</strong>', sub: [
-          { html: '<strong>Corporate:</strong> $3,000' },
-          { html: '<strong>Friend / Peer:</strong> $1,000 \u2013 $1,500' }
-        ] }
+        ['<strong>Example tier</strong>', '$0', '$0']
       ] }
     ] },
-    { key: 'sex-talk-hub', label: 'sex talk', type: 'table', cols: ['Item', 'Status', 'Notes'], rows: [['', '', '']] },
     { key: 'schedule', label: 'schedule', type: 'table', cols: ['Item', 'Status', 'Notes'], rows: [['', '', '']] },
     { key: 'management', label: 'management', type: 'table', cols: ['Item', 'Status', 'Notes'], rows: [['', '', '']] },
     { key: 'lead-gen', label: 'lead gen', type: 'table', cols: ['Item', 'Status', 'Notes'], rows: [['', '', '']] },
     { key: 'yours', label: 'yours', type: 'table', cols: ['Item', 'Status', 'Notes'], rows: [['', '', '']] },
-    { key: 'expenses', label: 'expenses', type: 'table', cols: ['Item', 'Amount', 'Notes'], rows: [['', '', '']] },
-    { key: 'before-aps', label: "'before' at All Points East \u2014 [sponsor]", type: 'table', cols: ['Item', 'Status', 'Notes'], rows: [['', '', '']] },
-    { key: 'ette', label: 'ette', type: 'table', cols: ['Item', 'Status', 'Notes'], rows: [['', '', '']] }
+    { key: 'expenses', label: 'expenses', type: 'table', cols: ['Item', 'Amount', 'Notes'], rows: [['', '', '']] }
   ];
   let pages = JSON.parse(localStorage.getItem('hq_pages') || 'null') || SEED_PAGES;
   function savePages() { localStorage.setItem('hq_pages', JSON.stringify(pages)); touchActivity(); }
@@ -845,7 +822,7 @@
     savePages();
     render();
   }
-  let workspaceName = localStorage.getItem('hq_workspace_name') || 'Lola Operations';
+  let workspaceName = localStorage.getItem('hq_workspace_name') || 'Your Workspace';
   function saveWorkspaceName(name) {
     workspaceName = name;
     localStorage.setItem('hq_workspace_name', workspaceName);
@@ -979,7 +956,7 @@
       '<div class="home-grid">' +
       '<div class="hg-pages page-list">' + pagesListHTML + '</div>' +
       '<div class="hg-schedule widget-card">' +
-      '<div class="widget-title">' + esc(workspaceName.split(' ')[0] || 'Her') + '\u2019s next few days</div><div class="widget-sub">Living timeline &middot; posting &amp; delivery dates</div>' +
+      '<div class="widget-title">Next few days</div><div class="widget-sub">Living timeline &middot; posting &amp; delivery dates</div>' +
       scheduleHTML() + '</div>' +
       '<div class="hg-status widget-card">' +
       '<div class="widget-title">Job status</div><div class="widget-sub">Across all jobs</div>' +
@@ -1009,163 +986,43 @@
   }
 
   /* =====================================================================
-     JOB SHEET (a group page): the real data pulled from Lola's Notion
-     export — Jobs, Jewelry + Objects, People, Posting, PR / Interview,
-     Sex Talk — each its own live table, browsable from a sidebar.
+     JOB SHEET (a group page): a blank starter structure — Jobs, Products,
+     People, Posting, PR / Interview, Interview Series — each its own live
+     table, browsable from a sidebar. Ships empty; onboarding's import step
+     is what actually populates this from whatever the client already uses
+     (Notes app, Google Sheets, Google Docs, etc.) so Studio Aa can build the
+     real framework around their actual work, not sample data.
      ===================================================================== */
   const SEED_CATS = [
     {
       key: 'jobs', label: 'Jobs',
       cols: ['Client','Delivery Date','Invoice Amount','Invoice #','Job Status','Team','Paid','Payment Pipeline','Posting','Priority','Reviewed','Taxes'],
-      rows: [
-        ['prettysick - new album cover','end of feb','$6,800','1159','completed','ldm - work','Yes','awaiting second payment','Need to Post','completed','already looked over',''],
-        ['ssense - estratosfera','feb 20th','$1,500.00','1157','completed','ldm - work','Yes','awaiting payment','Need to Post','completed','already looked over',''],
-        ["l'oreal - youth to the people",'feb 13','$2,500.00','1158','completed','ldm - work','Yes','awaiting payment','Posted!','completed','already looked over',''],
-        ['bbpue - music video concept','tbd','tbd','1169','awaiting start','ldm - work','No','awaiting start','Not started','cancelled','need to look over',''],
-        ['morgan maher - photo book bts','January 31, 2026','x','1174','awaiting start','ldm - work','No','friend','Not started','cancelled','not started',''],
-        ['madhappy - store activation, campaign, employee uniform, etc.','tbd','tbd','1170','awaiting start','ldm - work','No','awaiting start','Not started','cancelled','need to look over',''],
-        ['OGBFF - 12 song playlist','jan 26th','x','1163','completed','ldm - work','Yes','unpaid','Posted!','completed','already looked over',''],
-        ['richard turley - management','tbd','$3000.00','1163 - part 4 / 1161 - part 3 / 1101 - part 2 / 1082 - part 1','in progress','ldm - work','Yes','retainer','Need to Post','high priority','seen',''],
-        ['comet - single cover shoot','jan 21','$700.00','1156','completed','ldm - work','Yes','paid','Not going to Post','completed','already looked over',''],
-        ['esp - collab (music videos, album art, images, etc.)','tbd','tbd','1172','cancelled','ldm - work','No','awaiting start','Not started','cancelled','already looked over',''],
-        ['welcome.jpeg - ear cover shoot','x','x','1157','awaiting start','ldm - work','No','awaiting start','Not started','cancelled','need to look over',''],
-        ['abelia edward goucha - photoshoot','x','$1,400','1100','completed','ldm - work','Yes','paid','Posted!','completed','already looked over',''],
-        ['biz - nyfw','end of fashion week','x','1175','completed','ldm - work, Biz, Aakash Kakkar','Yes','friend','Posted!','completed','seen',''],
-        ['auwbe - sweet like everything','march 13th','x','1089','completed','ldm - work','Yes','paid','Need to Post','completed','seen',''],
-        ['bernard cohen - shooting book cover','friday 02 06','0$','1176','completed','ldm - work','Yes','friend','Posted!','completed','seen',''],
-        ['fedrico - digital spenders club','52 days upon commencement','x','1177','in progress','ldm - work','No','negotiating','Need to Post','#1 PRIORITY','seen','$2,348.00 USD'],
-        ['family style - teen editorial w/biz','Mid March','$850+','1178','cancelled','Biz, ldm - work','No','negotiating','Not started','cancelled','seen',''],
-        ['before - festival','tbd','tbd','1179','in progress','ldm - work, Biz','No','awaiting start','Need to Post','least priority','seen',''],
-        ["Instagram - 'Forbidden Fruits'",'tbd','tbd','1182','cancelled','ldm - work','No','awaiting start','Not started','cancelled','not started',''],
-        ['notfit4main - instagram','tbd','$10,000','1181','completed','ldm - work','Yes','awaiting second payment','Need to Post','completed','seen',''],
-        ['NTS - umru + berkjsha','tbd','tbd','1183','cancelled','ldm - work','No','awaiting start','Not started','cancelled','not started',''],
-        ['ELLE - Mexico Feature','tbd','tbd','1184','completed','ldm - work','Yes','unpaid','Need to Post','completed','not started',''],
-        ['SimoneSchofer - Theory Tailoring','tbd','tbd','1185','cancelled','ldm - work','No','awaiting start','Not started','cancelled','not started',''],
-        ['TK - short videos sponsorship','tbd','tbd','1186','awaiting start','ldm - work','No','awaiting start','Not going to Post','least priority','not started',''],
-        ['sex talk - sponsorship','tbd','tbd','1187','in progress','ldm - work, Aakash Kakkar, Asher Penn','No','awaiting start','Posted!','least priority','seen',''],
-        ['odyxxey','tbd','','1188','completed','ldm - work','Yes','unpaid','Posted!','completed','seen',''],
-        ['Tom Hancock x New Desk :)','tbd','desk','1190','in progress','ldm - work','Yes','desk','Posted!','least priority','seen',''],
-        ['balenciaga - image consultation','May 1st','$9,400','1191','completed','ldm - work','Yes','awaiting payment','Need to Post','completed','not started',''],
-        ['dean kissik - spike mag and GC','May 4th','$949','1192','completed','Aakash Kakkar, ldm - work','No','awaiting payment','Need to Post','completed','seen',''],
-        ['Opus - Flyer Design','June 1st','$200','1193','completed','ldm - work','Yes','paid','Posted!','completed','seen',''],
-        ['sukiwaterhouse - met gala bts','may 4th','$3,000','1194','completed','ldm - work','Yes','awaiting payment','Posted!','completed','not started',''],
-        ['Jim Joe - Photography','June 26th','$0.00','1195','completed','ldm - work','Yes','unpaid','Done','completed','seen',''],
-        ['Alexander Wang - Campaign Shoot','','$1,000','1196','cancelled','ldm - work','No','paid','Not started','cancelled','already looked over',''],
-        ['gymnasium studio','TBD','x','1197','awaiting start','ldm - work','No','awaiting start','Need to Post','least priority','seen',''],
-        ['Pretty Sick - Anarchy Vinyl + CD','July 17th','$3,000.00 USD','1198','high priority','ldm - work','No','client awaiting delivery','Need to Post','#3 PRIORITY','seen','$850.00 USD'],
-        ['British Vogue - Quote','delivered','0','1199','completed','ldm - work','No','unpaid','Not going to Post','completed','seen',''],
-        ['mad happy images','June 10th','$500.00','1199','completed','ldm - work','Yes','paid','Need to Post','completed','seen','$141.50 USD'],
-        ['Sex Talk Book','September 22nd','TBD','1999','in progress','ldm - work, Asher Penn, Aakash Kakkar','No','awaiting start','Not started','#2 PRIORITY','seen',''],
-        ['ette [julie clothing pop-up]','September 22nd','TBD','1201','in progress','ldm - work, Aakash Kakkar','No','TBD','Not started','high priority','seen',''],
-        ['Hannah - Gem Home','June 23rd','TBD','1200','in progress','ldm - work','No','TBD','Not started','high priority','seen',''],
-        ['Nate Sib - BTS','Friday, June 26th','TBD','2002','cancelled','ldm - work','No','TBD','Need to Post','cancelled','seen',''],
-        ['blaketheman - visuals','July 22nd','$3,500.00','1204','awaiting start','ldm - work','No','unpaid','Not going to Post','high priority','seen',''],
-        ['purple magazine / joe van o','tbd','','1203','high priority','ldm - work','No','','Not started','least priority','not started',''],
-        ['Madhappy - Graphic Design','July 15th','$1,000','1205','high priority','Aakash Kakkar, ldm - work','No','paid','Not started','high priority','seen','']
-      ]
+      rows: [['', '', '', '', '', '', '', '', '', '', '', '']]
     },
     {
-      key: 'jewelry', label: 'Jewelry + Objects',
+      key: 'jewelry', label: 'Products',
       cols: ['Object','Status','Team','Priority','Production #','Reviewed'],
-      rows: [
-        ['send cut send - snowflakes','not in progress','ldm - work','least priority','0010','already looked over'],
-        ['bello project - symbol pins','not in progress','ldm - work','least priority','0008','already looked over'],
-        ['mudshark - tray manufacturing','not in progress','ldm - work','high priority','0011','already looked over'],
-        ['dog tags','not in progress','Aakash Kakkar','least priority','0001','already looked over'],
-        ['bello project - peace arm bands','not in progress','ldm - work','least priority','0009','already looked over'],
-        ['ring','in progress','ldm - work','high priority','0007','already looked over'],
-        ['symbol earrings','not in progress','ldm - work','least priority','0003','already looked over'],
-        ['symbol necklaces','not in progress','ldm - work','least priority','0002','already looked over'],
-        ['small symbol necklaces','not in progress','Aakash Kakkar, ldm - work','least priority','0004','already looked over'],
-        ['menorah','not in progress','ldm - work','least priority','0005','already looked over'],
-        ['safety pins','not in progress','ldm - work','least priority','0006','already looked over'],
-        ['magazine','in progress','ldm - work','high priority','0012','already looked over'],
-        ['creative person t-shirts','in progress','ldm - work','high priority','0013','already looked over']
-      ]
+      rows: [['', '', '', '', '', '']]
     },
     {
       key: 'people', label: 'People',
       cols: ['Person','Delivery Date','Invoice Amount','Job Log #','Job Status','Team','Payment Pipeline','Reached Out'],
-      rows: [
-        ['sebastian - curating new white space','','','0002','in progress','ldm - work, Aakash Kakkar','','reached out'],
-        ['gimaguas - sayana durany','','','0001','high priority','ldm - work','','haven\u2019t reached out'],
-        ['blix - babysallright - co-host','saturday 02 07','10 guest list + 10 drink ticket','0003','in progress','ldm - work','friend','least priority']
-      ]
+      rows: [['', '', '', '', '', '', '', '']]
     },
     {
       key: 'posting', label: 'Posting',
       cols: ['Name'],
-      rows: [
-        ['silk - on becoming'],
-        ['blogging - lola dement myers'],
-        ['outfit log - lola dement myers']
-      ]
+      rows: [['']]
     },
     {
       key: 'pr', label: 'PR / Interview',
       cols: ['PR Company','Arrived','Delivery Date','Invoice Amount','Job Log #','Team','Payment Pipeline','Pipeline','Reviewed'],
-      rows: [
-        ['helmut lang - brown bag gifting','haven\u2019t reached out','','','0002','ldm - work','','received','not started'],
-        ['binkmade - february - metal water bottles','haven\u2019t reached out','','','0001','ldm - work','','received','not started'],
-        ['__amuse_bouche__ - interview','cancelled','x','x','0003','ldm - work','unpaid','cancelled','already looked over'],
-        ['luxenburg pr - nyfw show','not attending','','','0004','ldm - work','','received','not started'],
-        ['Milk X','high priority','','','0005','ldm - work','','high priority','not started'],
-        ['madhappy - underwear / baby t\u2019s','in progress','','','0006','ldm - work','','high priority','not started'],
-        ['tankair','high priority','','','','','','high priority','not started'],
-        ['eckhaus latta','high priority','','','','','','high priority','not started']
-      ]
+      rows: [['', '', '', '', '', '', '', '', '']]
     },
     {
-      key: 'sextalk', label: 'Sex Talk',
+      key: 'sextalk', label: 'Interview Series',
       cols: ['Interviewee','Date','Following','Posted'],
-      rows: [
-        ['sex talk - brat star','','','shot / need to be edited'],
-        ['sex talk - femcel','','','shot / need to be edited'],
-        ['manon / ming bling bling','','','tbd on shoot date'],
-        ['sex talk - zane kind','October 17, 2025','','posted'],
-        ['sex talk - john maus','September 28, 2025','','posted'],
-        ['sex talk - noah dillon','October 13, 2025','','posted'],
-        ['sex talk - chandler ransom lucy','October 13, 2025','','posted'],
-        ['sex talk - evil giane','October 6, 2025','','posted'],
-        ['sex talk - sinreenter','October 27, 2025','','posted'],
-        ['sex talk - meg yates','November 3, 2025','','posted'],
-        ['sex talk - harmony trividad','September 22, 2025','','posted'],
-        ['sex talk - molly soda','November 30, 2025','','posted'],
-        ['sex talk - tan lin','November 20, 2025','','posted'],
-        ['sex talk - gala prudent','January 28, 2026','','posted'],
-        ['sex talk - bella m lucio','','','posted'],
-        ['sex talk - mgna crrrta','','','posted'],
-        ['sex talk - jack zebra','January 23, 2026','','posted'],
-        ['sex talk - nobu / owner of hysteric','December 20, 2025','','posted'],
-        ['sex talk - 1ldk','January 14, 2026','','posted'],
-        ['sex talk - shay','December 8, 2025','','posted'],
-        ['sex talk - comet','February 3, 2026','','posted'],
-        ['sex talk - morgan maher','January 19, 2026','','posted'],
-        ['sex talk - kosuke / owner final home','December 29, 2025','','posted'],
-        ['sex talk - biz sherbert','November 13, 2025','','posted'],
-        ['sex talk - nicola ripa','','','In progress'],
-        ['sex talk - blonde twins','','','Not scheduled'],
-        ['sex talk - miss madeline','','','Not scheduled'],
-        ['sex talk - quiet Light','April 16, 2026','','Not scheduled'],
-        ['sex talk - operelly','','','posted'],
-        ['sex talk - bassvictim','','','posted'],
-        ['sex talk - bunny rodger','','','tbd on shoot date'],
-        ['sex talk - hop','','','tbd on shoot date'],
-        ['sex talk - willow','','','tbd on shoot date'],
-        ['sex talk - richard turley','','','Not started'],
-        ['sex talk - bbque','','','tbd on shoot date'],
-        ['sex talk - clario','','','Not started'],
-        ['sex talk - lorde','','','Not started'],
-        ['sex talk - dean kissik','','','Not started'],
-        ['sex talk - suzy sheer','','','Not started'],
-        ['sex talk - zora','','','Not started'],
-        ['sex talk - sofie thatcher','','','Not started'],
-        ['sex talk - aimee frances','','','Not started'],
-        ['sex talk - Cult Member','','','asked / inbounded'],
-        ['sex talk - TDJ','','','asked / inbounded'],
-        ['sex talk - ear','','','tbd on shoot date'],
-        ['sex talk - babymoroco','','','asked / inbounded']
-      ]
+      rows: [['', '', '', '']]
     }
   ];
   let cats = JSON.parse(localStorage.getItem('hq_categories') || 'null') || SEED_CATS;
@@ -1597,9 +1454,9 @@
     document.getElementById('onboard-backdrop').classList.remove('show');
     render();
   }
-  function obImport() {
+  function obImport(source) {
     obFinish();
-    openImport();
+    openImport(source);
   }
   function maybeOnboard() {
     if (localStorage.getItem('hq_onboarded')) return;
