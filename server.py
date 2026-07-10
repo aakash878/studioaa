@@ -21,7 +21,10 @@ Usage:
     export ANTHROPIC_API_KEY=sk-ant-...
     export GOOGLE_CLIENT_ID=...apps.googleusercontent.com
     export GOOGLE_CLIENT_SECRET=...
-    python3 server.py            # serves on http://127.0.0.1:8080
+    export GOOGLE_REDIRECT_URI=http://127.0.0.1:8080/oauth/callback   # or your deployed URL
+    export ALLOWED_EMAILS=aakash@studioaamgmt.com   # comma-separated allowlist, defaults to this
+    export ALLOW_DEV_LOGIN=1   # optional, re-enables the no-auth /dev-login bypass locally
+    python3 server.py            # serves on http://127.0.0.1:8080 locally, or $PORT on a host
 
 Uses only the Python standard library (no flask/requests installed on this
 machine) — http.server for routing, urllib.request for outbound calls to the
@@ -79,10 +82,28 @@ ROUTE_TOOL = {
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
 PORT = int(os.environ.get("PORT", 8080))
+# 0.0.0.0 so the process is reachable from outside its container on a host
+# like Render; still works fine locally via http://127.0.0.1:PORT or http://localhost:PORT.
+HOST = os.environ.get("HOST", "0.0.0.0")
 REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", f"http://127.0.0.1:{PORT}/oauth/callback")
 # openid/email/profile identify who signed in; gmail.readonly is the scope
 # you'll need once the app actually reads mail, not just logs you in.
 GOOGLE_SCOPES = "openid email profile https://www.googleapis.com/auth/gmail.readonly"
+# Only these Google accounts may sign in — this holds real client/financial
+# data once it's on the public internet, so anonymous Google sign-in isn't safe.
+# Override on the host with ALLOWED_EMAILS=a@x.com,b@y.com (comma-separated).
+ALLOWED_EMAILS = {
+    e.strip().lower()
+    for e in os.environ.get("ALLOWED_EMAILS", "aakash@studioaamgmt.com").split(",")
+    if e.strip()
+}
+
+# Real client/financial data lives behind this login once deployed, so sign-in
+# is locked to specific emails rather than "any Google account". Comma-separated,
+# case-insensitive. Empty/unset = allow nobody (fail closed, not open).
+ALLOWED_EMAILS = {
+    e.strip().lower() for e in os.environ.get("ALLOWED_EMAILS", "").split(",") if e.strip()
+}
 
 SESSIONS = {}       # session id -> { email, name, access_token, refresh_token }
 PENDING_STATES = {}  # oauth "state" csrf token -> issued_at, so callback can't be spoofed
@@ -258,6 +279,11 @@ class Handler(SimpleHTTPRequestHandler):
         if claims.get("aud") != GOOGLE_CLIENT_ID:
             self._redirect("/login.html?error=" + urllib.parse.quote("token audience mismatch"))
             return
+        email = (claims.get("email") or "").lower()
+        if ALLOWED_EMAILS and email not in ALLOWED_EMAILS:
+            self._redirect("/login.html?error=" + urllib.parse.quote(
+                "This Google account isn't allowed to sign in to this workspace."))
+            return
 
         sid = secrets.token_urlsafe(32)
         SESSIONS[sid] = {
@@ -273,7 +299,12 @@ class Handler(SimpleHTTPRequestHandler):
 
     def _dev_login(self):
         # Preview-only bypass: no Google account needed, just look around.
-        # Not gated behind GOOGLE_CLIENT_ID so it works even before OAuth is set up.
+        # Off by default — this holds real client/financial data once deployed,
+        # so an unauthenticated "log in as anyone" route can't be reachable in
+        # production. Set ALLOW_DEV_LOGIN=1 locally if you want it back.
+        if os.environ.get("ALLOW_DEV_LOGIN") != "1":
+            self.send_error(404)
+            return
         sid = secrets.token_urlsafe(32)
         SESSIONS[sid] = {
             "email": "dev-preview@local",
@@ -311,5 +342,5 @@ if __name__ == "__main__":
     if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
         print("warning: GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET are not set — sign-in "
               "will fail until you set both and restart this server.")
-    print(f"serving {os.getcwd()} on http://127.0.0.1:{PORT} (model: {MODEL})")
-    ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
+    print(f"serving {os.getcwd()} on http://{HOST}:{PORT} (model: {MODEL})")
+    ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()

@@ -14,6 +14,8 @@
     --line-soft: rgba(20,19,24,.06);
     --bg: #f7f7f8;
     --surface: #ffffff;
+    --surface-glass: rgba(255,255,255,.72);
+    --surface-glass-lite: rgba(255,255,255,.34);
     --hover: rgba(20,19,24,.025);
   }
   body.dark {
@@ -24,14 +26,16 @@
     --line-soft: rgba(255,255,255,.06);
     --bg: #17171a;
     --surface: #1e1e22;
+    --surface-glass: rgba(28,27,32,.62);
+    --surface-glass-lite: rgba(28,27,32,.28);
     --hover: rgba(255,255,255,.04);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
-  html { -webkit-font-smoothing: antialiased; }
+  html { -webkit-font-smoothing: antialiased; background: var(--bg); }
   body {
-    background: var(--bg); color: var(--ink);
+    color: var(--ink);
     font-size: 13.5px; font-weight: 400; letter-spacing: -0.006em; line-height: 1.5;
-    min-height: 100vh; transition: background .2s ease, color .2s ease;
+    min-height: 100vh; transition: color .2s ease;
   }
 
   /* ---------- header ---------- */
@@ -44,7 +48,6 @@
   .hdr-word:hover { color: var(--gray-1); }
   .crumb-sep { color: var(--gray-2); font-size: 12px; }
   .crumb-cur { font-size: 12px; color: var(--gray-2); }
-  .hdr-right { display: flex; align-items: center; gap: 16px; }
   .who { font-size: 11px; color: var(--gray-2); }
   .signout {
     font-size: 11px; color: var(--gray-2); background: none; border: none; cursor: pointer;
@@ -61,18 +64,74 @@
     border-radius: 50%; background: var(--surface); box-shadow: 0 1px 3px rgba(0,0,0,.3);
     transition: transform .18s cubic-bezier(.3,1,.4,1);
   }
-  body.dark .toggle { background: var(--ink); }
-  body.dark .toggle::after { transform: translateX(14px); background: var(--bg); }
+  .toggle.on { background: var(--ink); }
+  .toggle.on::after { transform: translateX(14px); background: var(--bg); }
 
   #app { min-height: calc(100vh - 57px); }
 
   /* ---------- home: a clean, compact list of pages ---------- */
-  .home { max-width: 560px; margin: 0 auto; padding: 48px 28px 80px; }
+  .home { max-width: 980px; margin: 0 auto; padding: 48px 28px 80px; }
   .home-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gray-2); margin-bottom: 6px; }
   .home-title { font-size: 23px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 3px; }
   .home-sub { font-size: 11.5px; color: var(--gray-2); margin-bottom: 20px; }
+
+  /* ---------- home dashboard grid: pages (half) + schedule/status (quarters) + priority (full width) ---------- */
+  .home-grid { display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: min-content; gap: 16px; }
+  .hg-pages { grid-column: 1; grid-row: 1 / 3; display: flex; flex-direction: column; }
+  .hg-schedule { grid-column: 2; grid-row: 1; }
+  .hg-status { grid-column: 2; grid-row: 2; }
+  .hg-priority { grid-column: 1 / 3; }
+  .widget-card {
+    background: var(--surface-glass); backdrop-filter: blur(16px) saturate(160%); -webkit-backdrop-filter: blur(16px) saturate(160%);
+    border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px;
+  }
+  .widget-title { font-size: 12px; font-weight: 800; letter-spacing: -0.01em; }
+  .widget-sub { font-size: 10.5px; color: var(--gray-2); margin-bottom: 8px; }
+  .widget-empty { font-size: 11.5px; color: var(--gray-2); padding: 8px 0; }
+  .tl-item { display: flex; align-items: baseline; gap: 9px; padding: 5px 0; border-bottom: 1px solid var(--line-soft); font-size: 11.5px; }
+  .tl-item:last-child { border-bottom: none; }
+  .tl-date { font-weight: 700; color: var(--ink); flex-shrink: 0; width: 52px; }
+  .tl-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--gray-1); }
+  .tl-cat { font-size: 9.5px; color: var(--gray-2); flex-shrink: 0; }
+  .st-row { display: flex; align-items: center; gap: 8px; font-size: 11px; padding: 4px 0; }
+  .st-label { flex-shrink: 0; width: 92px; color: var(--gray-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .st-bar-wrap { flex: 1; height: 5px; background: var(--line-soft); border-radius: 3px; overflow: hidden; }
+  .st-bar { display: block; height: 100%; background: var(--ink); border-radius: 3px; }
+  .st-count { font-size: 10px; color: var(--gray-2); width: 16px; text-align: right; flex-shrink: 0; }
+  .pr-item { display: flex; align-items: center; gap: 12px; padding: 8px 4px; border-bottom: 1px solid var(--line-soft); font-size: 12.5px; }
+  .pr-item:last-child { border-bottom: none; }
+  .pr-rank {
+    width: 20px; height: 20px; border-radius: 50%; background: var(--ink); color: var(--bg);
+    font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .pr-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pr-meta { font-size: 10.5px; color: var(--gray-2); flex-shrink: 0; text-transform: capitalize; }
+  @media (max-width: 760px) {
+    .home-grid { grid-template-columns: 1fr; }
+    .hg-pages, .hg-schedule, .hg-status, .hg-priority { grid-column: 1; grid-row: auto; }
+  }
+
+  /* ---------- signal / noise: hide the noise widgets, glow what's marked signal ---------- */
+  body.focus-mode .hg-schedule, body.focus-mode .hg-status { display: none; }
+  body.focus-mode .home-grid { display: flex; flex-direction: column; }
+  body.focus-mode .hg-priority {
+    box-shadow: 0 0 0 1px rgba(216,179,77,.4), 0 0 30px rgba(216,179,77,.22);
+    border-color: rgba(216,179,77,.5);
+  }
+  body.focus-mode .prow:not([data-signal="1"]) { display: none; }
+  body.focus-mode .prow[data-signal="1"] {
+    box-shadow: inset 0 0 0 1px rgba(216,179,77,.4);
+    background: rgba(216,179,77,.08);
+    border-radius: 6px;
+  }
+  .home-freshness { font-size: 10.5px; color: var(--gray-2); margin-bottom: 20px; margin-top: -14px; }
+  .home .page-list, .home .widget-card {
+    background: var(--surface-glass-lite); border-color: var(--line-soft);
+    backdrop-filter: blur(28px) saturate(180%); -webkit-backdrop-filter: blur(28px) saturate(180%);
+  }
   .page-list {
-    display: flex; flex-direction: column; background: var(--surface);
+    display: flex; flex-direction: column; background: var(--surface-glass);
+    backdrop-filter: blur(16px) saturate(160%); -webkit-backdrop-filter: blur(16px) saturate(160%);
     border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
   }
   .prow {
@@ -82,6 +141,13 @@
   }
   .prow:last-child { border-bottom: none; }
   .prow:hover { background: var(--hover); }
+  .prow-star {
+    font-size: 10.5px; color: var(--line); cursor: pointer; flex-shrink: 0; width: 12px;
+    text-align: center; transition: color .12s ease;
+  }
+  .prow-star.on { color: #d8b34d; }
+  .prow:hover .prow-star { color: var(--gray-2); }
+  .prow:hover .prow-star.on { color: #d8b34d; }
   .prow-icon {
     width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;
     font-size: 10.5px; color: var(--gray-2); flex-shrink: 0;
@@ -135,7 +201,8 @@
 
   /* ---------- the table, shared by job-sheet categories and standalone pages ---------- */
   .table-wrap {
-    border: 1px solid var(--line); border-radius: 9px; overflow: auto; background: var(--surface);
+    border: 1px solid var(--line); border-radius: 9px; overflow: auto; background: var(--surface-glass);
+    backdrop-filter: blur(16px) saturate(160%); -webkit-backdrop-filter: blur(16px) saturate(160%);
     max-width: 100%;
   }
   table { border-collapse: collapse; width: max-content; min-width: 100%; }
@@ -149,8 +216,15 @@
     font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
     color: var(--gray-2); background: var(--surface); position: sticky; top: 0;
   }
-  th[contenteditable] { cursor: text; outline: none; }
-  th[contenteditable]:focus { color: var(--ink); }
+  .th-row { display: flex; align-items: center; gap: 6px; }
+  .th-name[contenteditable] { cursor: text; outline: none; flex: 1; }
+  .th-name[contenteditable]:focus { color: var(--ink); }
+  .th-type {
+    flex-shrink: 0; width: 17px; height: 17px; border: 1px solid var(--line-soft); border-radius: 5px;
+    background: none; color: var(--gray-2); font-size: 9px; cursor: pointer; line-height: 1;
+    display: flex; align-items: center; justify-content: center; text-transform: none;
+  }
+  .th-type:hover { color: var(--ink); border-color: var(--gray-2); }
   tbody tr:hover td { background: var(--hover); }
   td[contenteditable] {
     outline: none; cursor: text; min-width: 60px; max-width: 320px;
@@ -158,6 +232,18 @@
   }
   td[contenteditable]:focus { box-shadow: inset 0 0 0 1.5px var(--ink); border-radius: 3px; }
   td[contenteditable]:empty::before { content: attr(data-ph); color: var(--gray-2); }
+
+  .cell-checkbox { text-align: center; }
+  .cell-checkbox input { width: 14px; height: 14px; cursor: pointer; accent-color: var(--ink); }
+  .cell-select { white-space: normal; cursor: pointer; }
+  .cell-chip {
+    display: inline-flex; align-items: center; gap: 4px; background: var(--hover); border-radius: 5px;
+    padding: 2px 5px 2px 7px; font-size: 11px; margin: 1px 3px 1px 0;
+  }
+  .cell-chip b { font-weight: 400; opacity: .5; cursor: pointer; }
+  .cell-chip b:hover { opacity: 1; }
+  .cell-chip-add { font-size: 10.5px; color: var(--gray-2); opacity: 0; transition: opacity .12s ease; }
+  .cell-select:hover .cell-chip-add { opacity: 1; }
 
   .col-addbtn { width: 30px; text-align: center; cursor: pointer; color: var(--gray-2); user-select: none; }
   .col-addbtn:hover { color: var(--ink); background: var(--hover); }
@@ -168,6 +254,24 @@
   }
   tr:hover .row-del { opacity: 1; }
   .row-del:hover { color: var(--ink); }
+
+  /* ---------- top filter chips ---------- */
+  .filter-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .filter-label { font-size: 10.5px; color: var(--gray-2); font-weight: 700; margin-right: 2px; }
+  .filter-colpick {
+    font-size: 11px; font-weight: 700; border: 1px solid var(--line); border-radius: 7px; background: var(--surface);
+    color: var(--ink); padding: 4px 7px; cursor: pointer; max-width: 140px;
+  }
+  .filter-chip {
+    font-size: 11.5px; font-weight: 700; padding: 5px 10px; border-radius: 20px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--surface); color: var(--gray-1); transition: all .12s ease;
+  }
+  .filter-chip b { font-weight: 700; opacity: .5; margin-left: 2px; }
+  .filter-chip:hover { border-color: var(--gray-2); }
+  .filter-chip.on { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+  .filter-chip.on b { opacity: .65; }
+  .filter-clear { font-size: 11px; color: var(--gray-2); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; margin-left: 2px; }
+  .filter-clear:hover { color: var(--ink); }
 
   .add-row {
     display: flex; align-items: center; gap: 8px; padding: 9px 13px; font-size: 11.5px;
@@ -205,6 +309,18 @@
   }
   .doc-additem:hover, .doc-addblock:hover { color: var(--ink); }
   .doc-table { margin: 4px 0 6px; }
+  .doc-toggle { margin: 4px 0 6px; }
+  .doc-toggle-summary {
+    font-size: 12.5px; font-weight: 700; cursor: pointer; outline: none; padding: 2px 0;
+    list-style: none;
+  }
+  .doc-toggle-summary::-webkit-details-marker { display: none; }
+  .doc-toggle-summary::before { content: '\203a'; display: inline-block; margin-right: 6px; color: var(--gray-2); transition: transform .12s ease; }
+  .doc-toggle[open] > .doc-toggle-summary::before { transform: rotate(90deg); }
+  .doc-toggle-body { margin: 4px 0 2px 17px; }
+  .doc-toggle-item {
+    font-size: 12px; color: var(--gray-1); line-height: 1.55; padding: 2px 0; outline: none;
+  }
 
   @media (max-width: 760px) {
     .shell { flex-direction: column; }
@@ -222,8 +338,9 @@
   }
   .modal-backdrop.show { display: flex; }
   .modal-card {
-    background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+    background: var(--surface-glass); border: 1px solid var(--line); border-radius: 12px;
     padding: 22px; width: 100%; max-width: 480px; box-shadow: 0 12px 40px rgba(0,0,0,.18);
+    backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%);
   }
   .modal-title { font-size: 15px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 6px; }
   .modal-hint { font-size: 11.5px; color: var(--gray-2); line-height: 1.5; margin-bottom: 14px; }
@@ -242,22 +359,151 @@
   .modal-btn:hover { background: var(--hover); }
   .modal-btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
   .modal-btn.primary:hover { opacity: .85; }
+
+  /* ---------- right-edge hover panel: appearance / account / pages ---------- */
+  .edge-hover { position: fixed; top: 0; right: 0; width: 14px; height: 100vh; z-index: 40; }
+  .side-panel {
+    position: fixed; top: 0; right: 0; height: 100vh; width: 240px; z-index: 41;
+    background: var(--surface-glass); border-left: 1px solid var(--line);
+    padding: 22px 18px; overflow-y: auto; transform: translateX(100%);
+    transition: transform .22s cubic-bezier(.3,1,.4,1);
+    backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%);
+  }
+  .edge-hover:hover ~ .side-panel, .side-panel:hover { transform: translateX(0); }
+  .sp-section { margin-bottom: 22px; }
+  .sp-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--gray-2); margin-bottom: 8px; }
+  .sp-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; margin-bottom: 4px; }
+  .sp-pages { display: flex; flex-direction: column; gap: 1px; }
+  .sp-page { display: flex; align-items: center; gap: 8px; padding: 6px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .sp-page:hover { background: var(--hover); }
+  .sp-page .pi { font-size: 11px; flex-shrink: 0; width: 16px; text-align: center; color: var(--gray-2); }
+  .sp-page-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sp-tools { display: flex; flex-direction: column; gap: 1px; }
+  .sp-tool {
+    display: flex; align-items: center; gap: 8px; padding: 6px; border-radius: 6px;
+    font-size: 12px; font-weight: 600; color: var(--gray-1); cursor: pointer;
+  }
+  .sp-tool:hover { background: var(--hover); color: var(--ink); }
+  .sp-tool-i {
+    font-size: 9.5px; font-weight: 700; flex-shrink: 0; width: 18px; height: 18px;
+    display: flex; align-items: center; justify-content: center; border-radius: 4px;
+    background: var(--hover); color: var(--gray-2);
+  }
+
+  /* ---------- onboarding: shown once, first run only ---------- */
+  .onboard-backdrop {
+    display: none; position: fixed; inset: 0; z-index: 60; align-items: center; justify-content: center;
+    background: rgba(20,19,24,.4); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  }
+  .onboard-backdrop.show { display: flex; }
+  .onboard-card {
+    width: 100%; max-width: 420px; background: var(--surface-glass); border: 1px solid var(--line);
+    border-radius: 14px; padding: 32px 28px; box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%);
+  }
+  .ob-step { display: none; }
+  .ob-step.on { display: block; }
+  .ob-title { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 6px; }
+  .ob-sub { font-size: 12px; color: var(--gray-2); line-height: 1.5; margin-bottom: 18px; }
+  .ob-input {
+    width: 100%; font-size: 13px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--bg); color: var(--ink); font-family: inherit; margin-bottom: 14px;
+  }
+  .ob-input:focus { outline: none; border-color: var(--gray-1); }
+  .ob-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .ob-skip {
+    font-size: 11.5px; color: var(--gray-2); cursor: pointer; background: none; border: none;
+    font-family: inherit; text-decoration: underline; text-underline-offset: 2px;
+  }
+  .ob-skip:hover { color: var(--ink); }
+  .ob-next {
+    font-size: 12.5px; font-weight: 700; padding: 8px 16px; border-radius: 8px; border: none;
+    background: var(--ink); color: var(--bg); cursor: pointer; font-family: inherit;
+  }
+  .ob-next:hover { opacity: .85; }
+  .ob-chips { display: flex; gap: 8px; margin-bottom: 16px; }
+  .ob-chip { font-size: 12px; font-weight: 600; padding: 7px 12px; border-radius: 20px; border: 1px solid var(--line); cursor: pointer; color: var(--gray-1); }
+  .ob-chip.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+  /* ---------- page icon/emoji: click to customize ---------- */
+  .prow-icon, .pi { cursor: pointer; }
+  .prow-icon:hover, .pi:hover { transform: scale(1.2); }
+
+  /* ---------- weather backdrop: soft, slow, alive ---------- */
+  .bg-weather {
+    position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+    background: var(--bg); transition: background .3s ease;
+  }
+  .bg-weather span {
+    position: absolute; border-radius: 50%; filter: blur(70px); opacity: .35;
+    animation: drift 34s ease-in-out infinite alternate;
+  }
+  .bg-weather span:nth-child(1) { width: 46vw; height: 46vw; left: -10%; top: -10%; background: #cfe0ff; animation-duration: 34s; }
+  .bg-weather span:nth-child(2) { width: 38vw; height: 38vw; right: -8%; top: 10%; background: #ffd9ec; animation-duration: 40s; animation-delay: -8s; }
+  .bg-weather span:nth-child(3) { width: 42vw; height: 42vw; left: 20%; bottom: -18%; background: #dcd2ff; animation-duration: 46s; animation-delay: -20s; }
+  body.dark .bg-weather span { opacity: .16; }
+  body.dark .bg-weather span:nth-child(1) { background: #3a5b9c; }
+  body.dark .bg-weather span:nth-child(2) { background: #7c3a63; }
+  body.dark .bg-weather span:nth-child(3) { background: #4d3a86; }
+  @keyframes drift {
+    0% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(4%, 6%) scale(1.08); }
+    100% { transform: translate(-3%, -4%) scale(0.96); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bg-weather span { animation: none; }
+  }
 </style>
 </head>
 <body>
+<div class="bg-weather"><span></span><span></span><span></span></div>
+
 <header>
   <div class="hdr-left">
     <span class="hdr-word" onclick="goHome()">Studio Aa</span>
     <span id="crumb"></span>
   </div>
-  <div class="hdr-right">
-    <span class="who" id="who"></span>
-    <button class="signout" id="signout-btn" onclick="signOut()" style="display:none;">sign out</button>
-    <button class="toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode"></button>
-  </div>
 </header>
 
 <div id="app"></div>
+
+<div class="edge-hover" id="edge-hover"></div>
+<aside class="side-panel" id="side-panel">
+  <div class="sp-section">
+    <div class="sp-label">Appearance</div>
+    <div class="sp-row">
+      <span>Dark mode</span>
+      <button class="toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode"></button>
+    </div>
+    <div class="sp-row">
+      <span>Signal only</span>
+      <button class="toggle" id="focus-toggle" onclick="toggleFocusMode()" title="Glow signal, hide the noise"></button>
+    </div>
+  </div>
+  <div class="sp-section">
+    <div class="sp-label">Account</div>
+    <div class="sp-row">
+      <span class="who" id="who"></span>
+      <button class="signout" id="signout-btn" onclick="signOut()" style="display:none;">sign out</button>
+    </div>
+  </div>
+  <div class="sp-section">
+    <div class="sp-label">Pages</div>
+    <div class="sp-pages" id="sp-pages"></div>
+    <div class="sp-tool" onclick="addPage()"><span class="sp-tool-i">+</span>New page</div>
+  </div>
+  <div class="sp-section">
+    <div class="sp-label">Blocks</div>
+    <div class="sp-tools">
+      <div class="sp-tool" onclick="insertBlock('h2')"><span class="sp-tool-i">H1</span>Heading 1</div>
+      <div class="sp-tool" onclick="insertBlock('h3')"><span class="sp-tool-i">H2</span>Heading 2</div>
+      <div class="sp-tool" onclick="insertBlock('p')"><span class="sp-tool-i">&para;</span>Paragraph</div>
+      <div class="sp-tool" onclick="insertBlock('ul')"><span class="sp-tool-i">&bull;</span>Bulleted list</div>
+      <div class="sp-tool" onclick="insertBlock('toggle')"><span class="sp-tool-i">&rsaquo;</span>Toggle list</div>
+      <div class="sp-tool" onclick="insertBlock('table')"><span class="sp-tool-i">&#9638;</span>Table</div>
+    </div>
+  </div>
+</aside>
 
 <div class="modal-backdrop" id="import-backdrop" onclick="if(event.target===this) closeImport()">
   <div class="modal-card">
@@ -272,16 +518,86 @@
   </div>
 </div>
 
+<div class="onboard-backdrop" id="onboard-backdrop">
+  <div class="onboard-card">
+    <div class="ob-step on" id="ob-step-0">
+      <div class="ob-title">Welcome to your HQ</div>
+      <div class="ob-sub">We help you build whatever's next &mdash; a seed round, a clothing brand, a client roster, a tour. This is a quiet home base for that work: pages, tables, and docs that grow as it comes in. Takes about 20 seconds to set up.</div>
+      <div class="ob-actions">
+        <span></span>
+        <button class="ob-next" onclick="obGoto(1)">Let's go</button>
+      </div>
+    </div>
+    <div class="ob-step" id="ob-step-1">
+      <div class="ob-title">Name this workspace</div>
+      <div class="ob-sub">Shown at the top of your home page. You can change it later.</div>
+      <input class="ob-input" id="ob-name-input" placeholder="e.g. Lola Operations" />
+      <div class="ob-actions">
+        <button class="ob-skip" onclick="obGoto(2)">Skip</button>
+        <button class="ob-next" onclick="obSetName()">Next</button>
+      </div>
+    </div>
+    <div class="ob-step" id="ob-step-2">
+      <div class="ob-title">Pick your light</div>
+      <div class="ob-sub">Light or dark &mdash; you can toggle this anytime from the side panel.</div>
+      <div class="ob-chips">
+        <span class="ob-chip" id="ob-chip-light" onclick="obTheme('light')">Light</span>
+        <span class="ob-chip" id="ob-chip-dark" onclick="obTheme('dark')">Dark</span>
+      </div>
+      <div class="ob-actions">
+        <span></span>
+        <button class="ob-next" onclick="obGoto(3)">Next</button>
+      </div>
+    </div>
+    <div class="ob-step" id="ob-step-3">
+      <div class="ob-title">Bring in your first page</div>
+      <div class="ob-sub">Paste in notes, a doc, or a spreadsheet you already track things with &mdash; or just start blank and add pages as work comes in.</div>
+      <div class="ob-actions">
+        <button class="ob-skip" onclick="obFinish()">Start blank</button>
+        <button class="ob-next" onclick="obImport()">Paste something in</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
+  /* ---------- demo reset: visit ?reset=1 once to wipe local state and see
+     onboarding + seed data fresh, like a brand-new user (e.g. for recording). ---------- */
+  (function maybeReset() {
+    if (new URLSearchParams(window.location.search).get('reset') !== '1') return;
+    ['hq_onboarded', 'hq_view', 'hq_workspace_name', 'hq_pages', 'hq_categories', 'hq_active_cat', 'hq_theme']
+      .forEach(k => localStorage.removeItem(k));
+    window.history.replaceState({}, '', window.location.pathname);
+  })();
+
   /* ---------- theme ---------- */
   function applyTheme() {
-    document.body.classList.toggle('dark', localStorage.getItem('hq_theme') === 'dark');
+    const dark = localStorage.getItem('hq_theme') === 'dark';
+    document.body.classList.toggle('dark', dark);
+    const btn = document.getElementById('theme-toggle');
+    if (btn) btn.classList.toggle('on', dark);
   }
   function toggleTheme() {
-    const dark = document.body.classList.toggle('dark');
+    const dark = !document.body.classList.contains('dark');
     localStorage.setItem('hq_theme', dark ? 'dark' : 'light');
+    applyTheme();
   }
   applyTheme();
+
+  /* ---------- signal / noise: one toggle that glows what's marked signal
+     and hides everything else (the "noise") on the home dashboard ---------- */
+  function applyFocusMode() {
+    const on = localStorage.getItem('hq_focus_mode') === '1';
+    document.body.classList.toggle('focus-mode', on);
+    const btn = document.getElementById('focus-toggle');
+    if (btn) btn.classList.toggle('on', on);
+  }
+  function toggleFocusMode() {
+    const on = !document.body.classList.contains('focus-mode');
+    localStorage.setItem('hq_focus_mode', on ? '1' : '0');
+    applyFocusMode();
+  }
+  applyFocusMode();
 
   /* ---------- who's signed in ---------- */
   fetch('/api/me').then(r => r.ok ? r.json() : null).then(me => {
@@ -294,6 +610,13 @@
   }
 
   function esc(s) { return (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+  /* Safe to embed as a 'single-quoted JS string' inside an onclick="..." (double-quoted)
+     attribute, even when the underlying value has apostrophes, quotes, or ampersands
+     (real client data does — e.g. "l'oreal"). JS-escape first, then HTML-escape what's left. */
+  function jsAttrStr(s) {
+    let t = (s == null ? '' : String(s)).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    return t.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  }
 
   /* =====================================================================
      IMPORT / ONBOARDING: paste in whatever you already track things with
@@ -462,7 +785,26 @@
     { key: 'ette', label: 'ette', type: 'table', cols: ['Item', 'Status', 'Notes'], rows: [['', '', '']] }
   ];
   let pages = JSON.parse(localStorage.getItem('hq_pages') || 'null') || SEED_PAGES;
-  function savePages() { localStorage.setItem('hq_pages', JSON.stringify(pages)); }
+  function savePages() { localStorage.setItem('hq_pages', JSON.stringify(pages)); touchActivity(); }
+  function touchActivity() { localStorage.setItem('hq_last_active', String(Date.now())); }
+  function timeAgo() {
+    const ts = Number(localStorage.getItem('hq_last_active') || 0);
+    if (!ts) return 'no activity yet';
+    const mins = Math.round((Date.now() - ts) / 60000);
+    if (mins < 1) return 'updated just now';
+    if (mins < 60) return 'updated ' + mins + (mins === 1 ? ' minute ago' : ' minutes ago');
+    const hrs = Math.round(mins / 60);
+    if (hrs < 24) return 'updated ' + hrs + (hrs === 1 ? ' hour ago' : ' hours ago');
+    const days = Math.round(hrs / 24);
+    return 'updated ' + days + (days === 1 ? ' day ago' : ' days ago');
+  }
+  function toggleSignal(key) {
+    const p = pages.find(x => x.key === key);
+    if (!p) return;
+    p.signal = !p.signal;
+    savePages();
+    render();
+  }
 
   let view = localStorage.getItem('hq_view') || 'home';
   function goHome() { view = 'home'; localStorage.setItem('hq_view', 'home'); render(); }
@@ -485,28 +827,178 @@
   }
 
   function pageMeta(p) {
+    if (p.emoji) {
+      if (p.type === 'group') return { icon: p.emoji, meta: cats.length + (cats.length === 1 ? ' table' : ' tables') };
+      if (p.type === 'doc') return { icon: p.emoji, meta: p.blocks.length + (p.blocks.length === 1 ? ' section' : ' sections') };
+      return { icon: p.emoji, meta: p.rows.length + (p.rows.length === 1 ? ' row' : ' rows') };
+    }
     if (p.type === 'group') return { icon: '\u25a6', meta: cats.length + (cats.length === 1 ? ' table' : ' tables') };
     if (p.type === 'doc') return { icon: '\u00b6', meta: p.blocks.length + (p.blocks.length === 1 ? ' section' : ' sections') };
     return { icon: '\u25a2', meta: p.rows.length + (p.rows.length === 1 ? ' row' : ' rows') };
   }
+  function setPageEmoji(key) {
+    const p = pages.find(x => x.key === key);
+    if (!p) return;
+    const val = prompt('Set an emoji for this page (e.g. \u262e\ufe0f):', p.emoji || '');
+    if (val === null) return;
+    p.emoji = val.trim();
+    savePages();
+    render();
+  }
+  let workspaceName = localStorage.getItem('hq_workspace_name') || 'Lola Operations';
+  function saveWorkspaceName(name) {
+    workspaceName = name;
+    localStorage.setItem('hq_workspace_name', workspaceName);
+  }
+
+  /* =====================================================================
+     HOME DASHBOARD WIDGETS: schedule (living timeline), job status
+     breakdown, and a ranked "biggest priority, today" list \u2014 all read
+     straight from the live job-sheet categories, no separate data model.
+     ===================================================================== */
+  function parseLooseDate(str) {
+    if (!str) return null;
+    let s = String(str).trim();
+    if (!s || /^(x|tbd|n\/a|-|desk)$/i.test(s)) return null;
+    s = s.replace(/^[A-Za-z]+day,?\s+/i, '');
+    s = s.replace(/(\d+)(st|nd|rd|th)\b/gi, '$1');
+    let d = new Date(s);
+    if (isNaN(d.getTime()) && !/\d{4}/.test(s)) {
+      d = new Date(s + ', ' + new Date().getFullYear());
+    }
+    return isNaN(d.getTime()) ? null : d;
+  }
+  function scheduleItems() {
+    const out = [];
+    function pull(catKey, dateCol, labelCol) {
+      const c = cats.find(x => x.key === catKey);
+      if (!c) return;
+      const di = c.cols.indexOf(dateCol), li = c.cols.indexOf(labelCol);
+      if (di < 0 || li < 0) return;
+      c.rows.forEach(r => {
+        const d = parseLooseDate(r[di]);
+        if (d) out.push({ date: d, label: r[li], cat: c.label });
+      });
+    }
+    pull('jobs', 'Delivery Date', 'Client');
+    pull('people', 'Delivery Date', 'Person');
+    pull('pr', 'Delivery Date', 'PR Company');
+    pull('sextalk', 'Date', 'Interviewee');
+    out.sort((a, b) => a.date - b.date);
+    return out;
+  }
+  function fmtShort(d) { return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); }
+  function upcomingSchedule(n) {
+    const all = scheduleItems();
+    const now = new Date();
+    let win = all.filter(x => (x.date - now) / 86400000 >= -10 && (x.date - now) / 86400000 <= 45);
+    if (!win.length) {
+      win = all.slice().sort((a, b) => Math.abs(a.date - now) - Math.abs(b.date - now));
+    }
+    return win.slice(0, n || 8);
+  }
+  function scheduleHTML() {
+    const win = upcomingSchedule(8);
+    if (!win.length) return '<div class="widget-empty">Nothing dated yet.</div>';
+    return win.map(it => '<div class="tl-item"><span class="tl-date">' + fmtShort(it.date) + '</span>' +
+      '<span class="tl-label">' + esc(it.label) + '</span><span class="tl-cat">' + esc(it.cat) + '</span></div>').join('');
+  }
+  function statusHTML() {
+    const c = cats.find(x => x.key === 'jobs');
+    if (!c) return '<div class="widget-empty">No jobs yet.</div>';
+    const si = c.cols.indexOf('Job Status');
+    if (si < 0) return '<div class="widget-empty">No status column.</div>';
+    const counts = {};
+    c.rows.forEach(r => { const v = (r[si] || '').trim() || 'unset'; counts[v] = (counts[v] || 0) + 1; });
+    const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    const max = Math.max.apply(null, entries.map(e => e[1]).concat(1));
+    return entries.map(([label, n]) =>
+      '<div class="st-row"><span class="st-label">' + esc(label) + '</span>' +
+      '<span class="st-bar-wrap"><span class="st-bar" style="width:' + Math.round(n / max * 100) + '%"></span></span>' +
+      '<span class="st-count">' + n + '</span></div>'
+    ).join('');
+  }
+  function priorityRank(val) {
+    val = (val || '').toLowerCase();
+    const m = val.match(/#(\d+)\s*priority/);
+    if (m) return parseInt(m[1], 10);
+    if (val.indexOf('high priority') !== -1) return 10;
+    if (val.indexOf('least priority') !== -1) return 100;
+    return 50;
+  }
+  function priorityItems() {
+    const out = [];
+    const jobs = cats.find(x => x.key === 'jobs');
+    if (jobs) {
+      const pi = jobs.cols.indexOf('Priority'), si = jobs.cols.indexOf('Job Status'), ci = jobs.cols.indexOf('Client');
+      jobs.rows.forEach(r => {
+        const status = (r[si] || '').toLowerCase();
+        if (status === 'completed' || status === 'cancelled') return;
+        out.push({ name: r[ci], meta: r[si], rank: priorityRank(r[pi]) });
+      });
+    }
+    const jewelry = cats.find(x => x.key === 'jewelry');
+    if (jewelry) {
+      const pi = jewelry.cols.indexOf('Priority'), si = jewelry.cols.indexOf('Status'), oi = jewelry.cols.indexOf('Object');
+      jewelry.rows.forEach(r => {
+        if ((r[si] || '').toLowerCase() !== 'in progress') return;
+        out.push({ name: r[oi], meta: 'jewelry \u00b7 ' + r[si], rank: priorityRank(r[pi]) });
+      });
+    }
+    out.sort((a, b) => a.rank - b.rank);
+    return out.slice(0, 10);
+  }
+  function priorityHTML() {
+    const items = priorityItems();
+    if (!items.length) return '<div class="widget-empty">Nothing urgent right now.</div>';
+    return items.map((it, i) =>
+      '<div class="pr-item"><span class="pr-rank">' + (i + 1) + '</span>' +
+      '<span class="pr-name">' + esc(it.name) + '</span>' +
+      '<span class="pr-meta">' + esc(it.meta) + '</span></div>'
+    ).join('');
+  }
+
   function homeHTML() {
+    const pagesListHTML = pages.map(p => {
+      const m = pageMeta(p);
+      return '<div class="prow" data-signal="' + (p.signal ? 1 : 0) + '" onclick="openPage(\'' + p.key + '\')">' +
+        '<span class="prow-star' + (p.signal ? ' on' : '') + '" onclick="event.stopPropagation(); toggleSignal(\'' + p.key + '\')" title="Mark as signal">' + (p.signal ? '\u2605' : '\u2606') + '</span>' +
+        '<span class="prow-icon" onclick="event.stopPropagation(); setPageEmoji(\'' + p.key + '\')" title="Click to change icon">' + m.icon + '</span>' +
+        '<span class="prow-name">' + esc(p.label) + '</span>' +
+        '<span class="prow-meta">' + m.meta + '</span>' +
+        '<button class="prow-del" onclick="event.stopPropagation(); delPage(\'' + p.key + '\')" title="Delete">\u00d7</button>' +
+        '</div>';
+    }).join('') +
+      '<div class="prow-add" onclick="addPage()">+ New page</div>' +
+      '<div class="prow-add" onclick="openImport()">+ Import notes, doc, or sheet</div>';
     return '<div class="home">' +
       '<div class="home-eyebrow">Workspace</div>' +
-      '<div class="home-title">Lola Operations</div>' +
+      '<div class="home-title">' + esc(workspaceName) + '</div>' +
       '<div class="home-sub">' + pages.length + ' pages</div>' +
-      '<div class="page-list">' +
-      pages.map(p => {
-        const m = pageMeta(p);
-        return '<div class="prow" onclick="openPage(\'' + p.key + '\')">' +
-          '<span class="prow-icon">' + m.icon + '</span>' +
-          '<span class="prow-name">' + esc(p.label) + '</span>' +
-          '<span class="prow-meta">' + m.meta + '</span>' +
-          '<button class="prow-del" onclick="event.stopPropagation(); delPage(\'' + p.key + '\')" title="Delete">\u00d7</button>' +
-          '</div>';
-      }).join('') +
-      '<div class="prow-add" onclick="addPage()">+ New page</div>' +
-      '<div class="prow-add" onclick="openImport()">+ Import notes, doc, or sheet</div>' +
+      '<div class="home-freshness">&#9679; ' + timeAgo() + '</div>' +
+      '<div class="home-grid">' +
+      '<div class="hg-pages page-list">' + pagesListHTML + '</div>' +
+      '<div class="hg-schedule widget-card">' +
+      '<div class="widget-title">' + esc(workspaceName.split(' ')[0] || 'Her') + '\u2019s next few days</div><div class="widget-sub">Living timeline &middot; posting &amp; delivery dates</div>' +
+      scheduleHTML() + '</div>' +
+      '<div class="hg-status widget-card">' +
+      '<div class="widget-title">Job status</div><div class="widget-sub">Across all jobs</div>' +
+      statusHTML() + '</div>' +
+      '<div class="hg-priority widget-card">' +
+      '<div class="widget-title">What to work on today</div><div class="widget-sub">Ranked across open jobs &amp; objects</div>' +
+      priorityHTML() + '</div>' +
       '</div></div>';
+  }
+
+  /* ---------- side panel: appearance / account / pages, hover-out from right edge ---------- */
+  function renderSidePanel() {
+    document.getElementById('sp-pages').innerHTML = pages.map(p => {
+      const m = pageMeta(p);
+      return '<div class="sp-page" onclick="openPage(\'' + p.key + '\')">' +
+        '<span class="pi">' + m.icon + '</span>' +
+        '<span class="sp-page-name">' + esc(p.label) + '</span>' +
+        '</div>';
+    }).join('');
   }
 
   function renderCrumb() {
@@ -678,13 +1170,14 @@
   ];
   let cats = JSON.parse(localStorage.getItem('hq_categories') || 'null') || SEED_CATS;
   let activeKey = localStorage.getItem('hq_active_cat') || cats[0].key;
-  function saveCats() { localStorage.setItem('hq_categories', JSON.stringify(cats)); }
+  function saveCats() { localStorage.setItem('hq_categories', JSON.stringify(cats)); touchActivity(); }
   function setActive(key) { activeKey = key; localStorage.setItem('hq_active_cat', key); renderNav(); renderTable(); }
   function activeCat() { return cats.find(c => c.key === activeKey) || cats[0]; }
 
   function jobSheetShellHTML() {
     return '<div class="shell"><nav id="nav"></nav><main>' +
       '<div class="page-title" id="page-title"></div><div class="page-sub" id="page-sub"></div>' +
+      '<div id="filter-bar-slot"></div>' +
       '<div class="table-wrap"><table id="tbl"><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>' +
       '<div class="add-row" onclick="addRow()">+ New</div>' +
       '</main></div>';
@@ -715,25 +1208,145 @@
     localStorage.setItem('hq_active_cat', activeKey);
     renderNav(); renderTable();
   }
+  /* =====================================================================
+     TABLE SHARED HELPERS: column types (text / checkbox / multi-select)
+     and top filter chips, reused by both the job-sheet categories and
+     standalone page tables so the two don't drift apart.
+     ===================================================================== */
+  let filterState = {};
+  function ensureColTypes(t) {
+    if (!t.colTypes || t.colTypes.length !== t.cols.length) {
+      const prev = t.colTypes || [];
+      t.colTypes = t.cols.map((_, i) => prev[i] || 'text');
+    }
+    return t.colTypes;
+  }
+  function typeGlyph(type) { return type === 'checkbox' ? '\u2611' : type === 'select' ? '\u2317' : 'Aa'; }
+  function nextColType(type) { return type === 'text' ? 'checkbox' : type === 'checkbox' ? 'select' : 'text'; }
+  function splitTags(v) { return (v || '').split(',').map(s => s.trim()).filter(Boolean); }
+  function joinTags(arr) { return arr.join(', '); }
+  function tableHeaderHTML(t, renameFn, cycleFn) {
+    ensureColTypes(t);
+    return t.cols.map((col, ci) =>
+      '<th><div class="th-row"><span class="th-name" contenteditable oninput="' + renameFn + '(' + ci + ', this)">' + esc(col) + '</span>' +
+      '<button class="th-type" onclick="' + cycleFn + '(' + ci + ')" title="Column type: text / checkbox / multi-select">' + typeGlyph(t.colTypes[ci]) + '</button></div></th>'
+    ).join('');
+  }
+  function tableCellHTML(value, type, ri, ci, setFn, addTagFn, delTagFn) {
+    if (type === 'checkbox') {
+      const checked = /^(true|yes|1|x|done)$/i.test((value || '').trim());
+      return '<td class="cell-checkbox"><input type="checkbox" ' + (checked ? 'checked' : '') +
+        ' onchange="' + setFn + '(' + ri + ',' + ci + ", this.checked ? 'true' : '')\"></td>";
+    }
+    if (type === 'select') {
+      const tags = splitTags(value);
+      const chips = tags.map((tg, ti) => '<span class="cell-chip">' + esc(tg) +
+        '<b onclick="event.stopPropagation(); ' + delTagFn + '(' + ri + ',' + ci + ',' + ti + ')">\u00d7</b></span>').join('');
+      return '<td class="cell-select" onclick="' + addTagFn + '(' + ri + ',' + ci + ')">' + chips + '<span class="cell-chip-add">+ tag</span></td>';
+    }
+    return '<td contenteditable data-ph="\u2014" oninput="' + setFn + '(' + ri + ',' + ci + ', this.textContent)">' + esc(value) + '</td>';
+  }
+  function guessFilterCol(t) {
+    const preferred = ['job status', 'status', 'team', 'client', 'priority', 'person', 'pr company'];
+    for (const name of preferred) {
+      const idx = t.cols.findIndex(c => c.toLowerCase() === name);
+      if (idx >= 0) return idx;
+    }
+    for (let ci = 0; ci < t.cols.length; ci++) {
+      const vals = new Set(t.rows.map(r => (r[ci] || '').trim()).filter(Boolean));
+      if (vals.size >= 2 && vals.size <= 10) return ci;
+    }
+    return -1;
+  }
+  function getFilterState(t) {
+    if (!filterState[t.key]) filterState[t.key] = { col: guessFilterCol(t), vals: new Set() };
+    return filterState[t.key];
+  }
+  function passesFilter(t, row) {
+    const fs = filterState[t.key];
+    if (!fs || fs.col < 0 || !fs.vals.size) return true;
+    return fs.vals.has((row[fs.col] || '').trim());
+  }
+  function filterBarHTML(t) {
+    const fs = getFilterState(t);
+    if (fs.col < 0 || !t.cols.length) return '';
+    const counts = {};
+    t.rows.forEach(r => { const v = (r[fs.col] || '').trim(); if (v) counts[v] = (counts[v] || 0) + 1; });
+    const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    if (!entries.length) return '';
+    const colOptions = t.cols.map((c, ci) => '<option value="' + ci + '"' + (ci === fs.col ? ' selected' : '') + '>' + esc(c) + '</option>').join('');
+    const chips = entries.map(([val, n]) =>
+      '<span class="filter-chip' + (fs.vals.has(val) ? ' on' : '') + '" onclick="toggleFilterChip(\'' + jsAttrStr(t.key) + '\',\'' + jsAttrStr(val) + '\')">' + esc(val) + ' <b>' + n + '</b></span>'
+    ).join('');
+    return '<div class="filter-bar"><span class="filter-label">Attention to</span>' +
+      '<select class="filter-colpick" onchange="setFilterCol(\'' + jsAttrStr(t.key) + '\', this.value)">' + colOptions + '</select>' +
+      chips +
+      (fs.vals.size ? '<span class="filter-clear" onclick="clearFilter(\'' + jsAttrStr(t.key) + '\')">Clear</span>' : '') +
+      '</div>';
+  }
+  function rerenderTableView() {
+    if (view === 'job-sheet') renderTable();
+    else if (curPage()) renderPageTable();
+  }
+  function toggleFilterChip(key, val) {
+    const fs = filterState[key];
+    if (!fs) return;
+    if (fs.vals.has(val)) fs.vals.delete(val); else fs.vals.add(val);
+    rerenderTableView();
+  }
+  function setFilterCol(key, ci) {
+    filterState[key] = { col: parseInt(ci, 10), vals: new Set() };
+    rerenderTableView();
+  }
+  function clearFilter(key) {
+    if (filterState[key]) filterState[key].vals = new Set();
+    rerenderTableView();
+  }
+
   function renderTable() {
     const c = activeCat();
+    ensureColTypes(c);
+    const visible = c.rows.map((row, ri) => ({ row, ri })).filter(x => passesFilter(c, x.row));
     document.getElementById('page-title').textContent = c.label;
-    document.getElementById('page-sub').textContent = c.rows.length + (c.rows.length === 1 ? ' row' : ' rows') + ' \u00b7 click any cell to edit';
+    document.getElementById('page-sub').textContent = visible.length + (visible.length === 1 ? ' row' : ' rows') +
+      (visible.length !== c.rows.length ? ' of ' + c.rows.length : '') + ' \u00b7 click any cell to edit';
     document.getElementById('thead').innerHTML = '<tr>' +
-      c.cols.map((col, ci) => '<th contenteditable oninput="renameCol(' + ci + ', this)">' + esc(col) + '</th>').join('') +
+      tableHeaderHTML(c, 'renameCol', 'cycleColType') +
       '<th class="col-addbtn" onclick="addCol()" title="Add column">+</th>' +
       '<th class="row-del-cell"></th></tr>';
-    document.getElementById('tbody').innerHTML = c.rows.map((row, ri) =>
-      '<tr>' + row.map((cell, ci) =>
-        '<td contenteditable data-ph="\u2014" oninput="setCell(' + ri + ',' + ci + ', this.textContent)">' + esc(cell) + '</td>'
-      ).join('') +
+    document.getElementById('tbody').innerHTML = visible.map(({ row, ri }) =>
+      '<tr>' + row.map((cell, ci) => tableCellHTML(cell, c.colTypes[ci], ri, ci, 'setCell', 'cellAddTag', 'cellRemoveTag')).join('') +
       '<td class="col-addbtn"></td>' +
       '<td class="row-del-cell"><button class="row-del" onclick="delRow(' + ri + ')" title="Remove row">\u00d7</button></td>' +
       '</tr>'
     ).join('');
+    const bar = document.getElementById('filter-bar-slot');
+    if (bar) bar.innerHTML = filterBarHTML(c);
   }
   function setCell(r, ci, v) { activeCat().rows[r][ci] = v; saveCats(); }
   function renameCol(ci, el) { activeCat().cols[ci] = el.textContent; saveCats(); }
+  function cycleColType(ci) {
+    const c = activeCat();
+    ensureColTypes(c);
+    c.colTypes[ci] = nextColType(c.colTypes[ci]);
+    saveCats(); renderTable();
+  }
+  function cellAddTag(ri, ci) {
+    const c = activeCat();
+    const val = prompt('Add tag');
+    if (!val || !val.trim()) return;
+    const tags = splitTags(c.rows[ri][ci]);
+    tags.push(val.trim());
+    c.rows[ri][ci] = joinTags(tags);
+    saveCats(); renderTable();
+  }
+  function cellRemoveTag(ri, ci, ti) {
+    const c = activeCat();
+    const tags = splitTags(c.rows[ri][ci]);
+    tags.splice(ti, 1);
+    c.rows[ri][ci] = joinTags(tags);
+    saveCats(); renderTable();
+  }
   function addRow() {
     const c = activeCat();
     c.rows.push(c.cols.map(() => ''));
@@ -743,7 +1356,9 @@
     const name = prompt('Column name', 'New');
     if (name === null) return;
     const c = activeCat();
+    ensureColTypes(c);
     c.cols.push(name || 'New');
+    c.colTypes.push('text');
     c.rows.forEach(r => r.push(''));
     saveCats(); renderTable();
   }
@@ -762,6 +1377,7 @@
   function pageTableShellHTML() {
     return '<main style="padding:28px 32px 80px;">' +
       '<div class="page-title" id="pt-title"></div><div class="page-sub" id="pt-sub"></div>' +
+      '<div id="pt-filter-bar-slot"></div>' +
       '<div class="table-wrap"><table id="pt-tbl"><thead id="pt-thead"></thead><tbody id="pt-tbody"></tbody></table></div>' +
       '<div class="add-row" onclick="ptAddRow()">+ New</div>' +
       '</main>';
@@ -769,29 +1385,56 @@
   function curPage() { return pages.find(p => p.key === view); }
   function renderPageTable() {
     const p = curPage();
+    ensureColTypes(p);
+    const visible = p.rows.map((row, ri) => ({ row, ri })).filter(x => passesFilter(p, x.row));
     document.getElementById('pt-title').textContent = p.label;
-    document.getElementById('pt-sub').textContent = p.rows.length + (p.rows.length === 1 ? ' row' : ' rows') + ' \u00b7 click any cell to edit';
+    document.getElementById('pt-sub').textContent = visible.length + (visible.length === 1 ? ' row' : ' rows') +
+      (visible.length !== p.rows.length ? ' of ' + p.rows.length : '') + ' \u00b7 click any cell to edit';
     document.getElementById('pt-thead').innerHTML = '<tr>' +
-      p.cols.map((col, ci) => '<th contenteditable oninput="ptRenameCol(' + ci + ', this)">' + esc(col) + '</th>').join('') +
+      tableHeaderHTML(p, 'ptRenameCol', 'ptCycleColType') +
       '<th class="col-addbtn" onclick="ptAddCol()" title="Add column">+</th>' +
       '<th class="row-del-cell"></th></tr>';
-    document.getElementById('pt-tbody').innerHTML = p.rows.map((row, ri) =>
-      '<tr>' + row.map((cell, ci) =>
-        '<td contenteditable data-ph="\u2014" oninput="ptSetCell(' + ri + ',' + ci + ', this.textContent)">' + esc(cell) + '</td>'
-      ).join('') +
+    document.getElementById('pt-tbody').innerHTML = visible.map(({ row, ri }) =>
+      '<tr>' + row.map((cell, ci) => tableCellHTML(cell, p.colTypes[ci], ri, ci, 'ptSetCell', 'ptCellAddTag', 'ptCellRemoveTag')).join('') +
       '<td class="col-addbtn"></td>' +
       '<td class="row-del-cell"><button class="row-del" onclick="ptDelRow(' + ri + ')" title="Remove row">\u00d7</button></td>' +
       '</tr>'
     ).join('');
+    const bar = document.getElementById('pt-filter-bar-slot');
+    if (bar) bar.innerHTML = filterBarHTML(p);
   }
   function ptSetCell(r, ci, v) { curPage().rows[r][ci] = v; savePages(); }
   function ptRenameCol(ci, el) { curPage().cols[ci] = el.textContent; savePages(); }
+  function ptCycleColType(ci) {
+    const p = curPage();
+    ensureColTypes(p);
+    p.colTypes[ci] = nextColType(p.colTypes[ci]);
+    savePages(); renderPageTable();
+  }
+  function ptCellAddTag(ri, ci) {
+    const p = curPage();
+    const val = prompt('Add tag');
+    if (!val || !val.trim()) return;
+    const tags = splitTags(p.rows[ri][ci]);
+    tags.push(val.trim());
+    p.rows[ri][ci] = joinTags(tags);
+    savePages(); renderPageTable();
+  }
+  function ptCellRemoveTag(ri, ci, ti) {
+    const p = curPage();
+    const tags = splitTags(p.rows[ri][ci]);
+    tags.splice(ti, 1);
+    p.rows[ri][ci] = joinTags(tags);
+    savePages(); renderPageTable();
+  }
   function ptAddRow() { const p = curPage(); p.rows.push(p.cols.map(() => '')); savePages(); renderPageTable(); }
   function ptAddCol() {
     const name = prompt('Column name', 'New');
     if (name === null) return;
     const p = curPage();
+    ensureColTypes(p);
     p.cols.push(name || 'New');
+    p.colTypes.push('text');
     p.rows.forEach(r => r.push(''));
     savePages(); renderPageTable();
   }
@@ -836,6 +1479,14 @@
       '</tbody></table></div>' +
       '<div class="doc-addblock" onclick="docAddRow(' + bi + ')">+ New row</div>';
   }
+  function docToggleHTML(b, bi) {
+    return '<details class="doc-toggle"' + (b.open ? ' open' : '') + ' ontoggle="docToggleOpen(' + bi + ', this.open)">' +
+      '<summary class="doc-toggle-summary" contenteditable oninput="docSetBlock(' + bi + ', this.innerHTML)">' + b.html + '</summary>' +
+      '<div class="doc-toggle-body">' +
+      b.items.map((it, ii) => '<div class="doc-toggle-item" contenteditable oninput="docToggleSetItem(' + bi + ',' + ii + ', this.innerHTML)">' + it.html + '</div>').join('') +
+      '<div class="doc-additem" onclick="docToggleAddItem(' + bi + ')">+ add line</div>' +
+      '</div></details>';
+  }
   function docHTML(blocks) {
     return blocks.map((b, bi) => {
       if (b.t === 'h2') return '<div class="doc-h2" contenteditable oninput="docSetBlock(' + bi + ', this.innerHTML)">' + b.html + '</div>';
@@ -843,6 +1494,7 @@
       if (b.t === 'p') return '<div class="doc-p" contenteditable oninput="docSetBlock(' + bi + ', this.innerHTML)">' + b.html + '</div>';
       if (b.t === 'hr') return '<hr class="doc-hr">';
       if (b.t === 'table') return docTableHTML(b, bi);
+      if (b.t === 'toggle') return docToggleHTML(b, bi);
       if (b.t === 'ul') return '<ul class="doc-ul">' + docListHTML(b.items, bi) + '</ul>' +
         '<div class="doc-additem" onclick="docAddItem(' + bi + ')">+ add item</div>';
       return '';
@@ -869,10 +1521,32 @@
     if (!b.rows.length) b.rows.push(b.cols.map(() => ''));
     savePages(); renderDoc();
   }
+  function docToggleOpen(bi, isOpen) { curPage().blocks[bi].open = isOpen; savePages(); }
+  function docToggleSetItem(bi, ii, html) { curPage().blocks[bi].items[ii].html = html; savePages(); }
+  function docToggleAddItem(bi) { curPage().blocks[bi].items.push({ html: 'New line' }); savePages(); renderDoc(); }
+
+  /* =====================================================================
+     BLOCK PALETTE: the side-panel "Blocks" section is the slash-command
+     menu, just always visible on hover instead of typed inline. Clicking
+     an item appends that block type to the current doc page.
+     ===================================================================== */
+  function insertBlock(kind) {
+    const p = curPage();
+    if (!p || p.type !== 'doc') { alert('Open a doc page first, then use Blocks to add to it.'); return; }
+    if (kind === 'h2') p.blocks.push({ t: 'h2', html: 'New heading' });
+    else if (kind === 'h3') p.blocks.push({ t: 'h3', html: 'New subheading' });
+    else if (kind === 'p') p.blocks.push({ t: 'p', html: 'Type something\u2026' });
+    else if (kind === 'ul') p.blocks.push({ t: 'ul', items: [{ html: 'New item' }] });
+    else if (kind === 'toggle') p.blocks.push({ t: 'toggle', html: 'Toggle', open: true, items: [{ html: 'New line' }] });
+    else if (kind === 'table') p.blocks.push({ t: 'table', cols: ['Col 1', 'Col 2'], rows: [['', '']] });
+    savePages();
+    renderDoc();
+  }
 
   /* ---------- the router ---------- */
   function render() {
     renderCrumb();
+    renderSidePanel();
     const app = document.getElementById('app');
     if (view === 'home') {
       app.innerHTML = homeHTML();
@@ -891,7 +1565,49 @@
     }
   }
 
+  /* =====================================================================
+     ONBOARDING: shown once, first run only. Name the workspace, pick a
+     theme, then either paste something in (reuses the import modal) or
+     start blank. Never shown again once completed or skipped.
+     ===================================================================== */
+  let obStep = 0;
+  function obGoto(n) {
+    document.getElementById('ob-step-' + obStep).classList.remove('on');
+    obStep = n;
+    document.getElementById('ob-step-' + obStep).classList.add('on');
+    if (obStep === 1) setTimeout(() => document.getElementById('ob-name-input').focus(), 0);
+    if (obStep === 2) {
+      document.getElementById('ob-chip-light').classList.toggle('on', !document.body.classList.contains('dark'));
+      document.getElementById('ob-chip-dark').classList.toggle('on', document.body.classList.contains('dark'));
+    }
+  }
+  function obSetName() {
+    const val = document.getElementById('ob-name-input').value.trim();
+    if (val) saveWorkspaceName(val);
+    obGoto(2);
+  }
+  function obTheme(mode) {
+    localStorage.setItem('hq_theme', mode);
+    applyTheme();
+    document.getElementById('ob-chip-light').classList.toggle('on', mode === 'light');
+    document.getElementById('ob-chip-dark').classList.toggle('on', mode === 'dark');
+  }
+  function obFinish() {
+    localStorage.setItem('hq_onboarded', '1');
+    document.getElementById('onboard-backdrop').classList.remove('show');
+    render();
+  }
+  function obImport() {
+    obFinish();
+    openImport();
+  }
+  function maybeOnboard() {
+    if (localStorage.getItem('hq_onboarded')) return;
+    document.getElementById('onboard-backdrop').classList.add('show');
+  }
+
   render();
+  maybeOnboard();
 </script>
 </body>
 </html>
