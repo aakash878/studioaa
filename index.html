@@ -46,8 +46,19 @@
   .hdr-left { display: flex; align-items: baseline; gap: 6px; cursor: default; }
   .hdr-word { font-size: 13.5px; font-weight: 700; letter-spacing: -0.02em; cursor: pointer; }
   .hdr-word:hover { color: var(--gray-1); }
+  .hdr-ws-toggle { position: relative; display: inline-flex; align-items: baseline; margin-left: 4px; }
+  .hdr-ws-caret { font-size: 9px; color: var(--gray-2); cursor: pointer; padding: 3px 5px; border-radius: 5px; }
+  .hdr-ws-caret:hover { background: var(--hover); color: var(--ink); }
+  .hdr-ws-pop {
+    display: none; position: absolute; top: 100%; left: 0; margin-top: 6px; min-width: 170px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 9px; padding: 5px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.14); z-index: 55;
+  }
+  .hdr-ws-pop.show { display: block; }
   .crumb-sep { color: var(--gray-2); font-size: 12px; }
   .crumb-cur { font-size: 12px; color: var(--gray-2); }
+  .crumb-connect { font-size: 11px; color: var(--gray-2); margin-left: 10px; cursor: pointer; padding: 2px 7px; border-radius: 20px; border: 1px solid var(--line); }
+  .crumb-connect:hover { color: var(--ink); background: var(--hover); }
   .who { font-size: 11px; color: var(--gray-2); }
   .signout {
     font-size: 11px; color: var(--gray-2); background: none; border: none; cursor: pointer;
@@ -364,6 +375,18 @@
   }
   .modal-title { font-size: 15px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 6px; }
   .modal-hint { font-size: 11.5px; color: var(--gray-2); line-height: 1.5; margin-bottom: 14px; }
+
+  /* ---------- toast: brief bottom-corner confirmation with an Undo action,
+     backs the \u2318Z undo history for destructive edits ---------- */
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(8px);
+    background: var(--ink); color: var(--bg); font-size: 12.5px; font-weight: 600;
+    padding: 10px 14px; border-radius: 9px; display: flex; align-items: center; gap: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.18); z-index: 60; opacity: 0; pointer-events: none;
+    transition: opacity .18s, transform .18s;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+  .toast button { background: none; border: none; color: var(--bg); font-weight: 700; cursor: pointer; text-decoration: underline; font-size: 12.5px; }
   .modal-input, .modal-textarea {
     width: 100%; font-size: 13px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px;
     background: var(--bg); color: var(--ink); font-family: inherit;
@@ -414,6 +437,34 @@
     backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%);
   }
   .edge-hover:hover ~ .side-panel, .side-panel:hover { transform: translateX(0); }
+
+  /* ---------- left-edge "connected page" peek: same peel-out mechanic as
+     the side panel, mirrored onto the left edge, only shown when the
+     current page has a connectedTo set ---------- */
+  .edge-hover-left { position: fixed; top: 0; left: 0; width: 14px; height: 100vh; z-index: 40; display: none; }
+  .edge-hover-left.show { display: block; }
+  .connected-peek {
+    position: fixed; top: 0; left: 0; height: 100vh; width: 240px; z-index: 41;
+    background: var(--surface-glass); border-right: 1px solid var(--line);
+    padding: 22px 18px; overflow-y: auto; transform: translateX(-100%);
+    transition: transform .22s cubic-bezier(.3,1,.4,1);
+    backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%);
+  }
+  .edge-hover-left:hover ~ .connected-peek, .connected-peek:hover { transform: translateX(0); }
+  .cp-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--gray-2); margin-bottom: 8px; }
+  .cp-name { font-size: 15px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 4px; cursor: pointer; }
+  .cp-name:hover { text-decoration: underline; }
+  .cp-meta { font-size: 11.5px; color: var(--gray-2); margin-bottom: 14px; }
+  .cp-preview { font-size: 12px; line-height: 1.6; color: var(--gray-1); margin-bottom: 16px; }
+  .cp-actions { display: flex; gap: 8px; }
+
+  /* ---------- collapse/expand toggle for pages that have subpages ---------- */
+  .prow-collapse, .sp-collapse {
+    cursor: pointer; color: var(--gray-2); font-size: 9px; width: 12px; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center; transition: transform .15s;
+  }
+  .prow-collapse.open, .sp-collapse.open { transform: rotate(90deg); }
+  .prow.collapsed-child, .sp-page.collapsed-child { display: none; }
   .sp-section { margin-bottom: 22px; }
   .sp-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--gray-2); margin-bottom: 8px; }
   .sp-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; margin-bottom: 4px; }
@@ -528,11 +579,18 @@
 <header>
   <div class="hdr-left">
     <span class="hdr-word" onclick="goHome()">Studio Aa</span>
+    <span class="hdr-ws-toggle">
+      <span class="hdr-ws-caret" onclick="event.stopPropagation(); toggleHeaderWsPop()" title="Switch workspace">&#8964;</span>
+      <div class="hdr-ws-pop" id="hdr-ws-pop"></div>
+    </span>
     <span id="crumb"></span>
   </div>
 </header>
 
 <div id="app"></div>
+
+<div class="edge-hover-left" id="edge-hover-left"></div>
+<aside class="connected-peek" id="connected-peek"></aside>
 
 <div class="edge-hover" id="edge-hover"></div>
 <aside class="side-panel" id="side-panel">
@@ -580,6 +638,19 @@
   </div>
 </aside>
 
+<div class="toast" id="toast"></div>
+
+<div class="modal-backdrop" id="confirm-backdrop" onclick="if(event.target===this) closeConfirmModal()">
+  <div class="modal-card">
+    <div class="modal-title">Studio Aa</div>
+    <div class="modal-hint" id="confirm-message"></div>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeConfirmModal()">Cancel</button>
+      <button class="modal-btn primary" onclick="confirmActionYes()">Delete</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="members-backdrop" onclick="if(event.target===this) closeMembers()">
   <div class="modal-card">
     <div class="modal-title">Workspace members</div>
@@ -611,21 +682,22 @@
 <div class="modal-backdrop" id="newnote-backdrop" onclick="if(event.target===this) closeNewNote()">
   <div class="modal-card">
     <div class="modal-title">New note</div>
-    <div class="modal-hint">Give it a name, pick where it lives, and what it should connect to &mdash; it opens immediately so you can start writing.</div>
+    <div class="modal-hint">Give it a name and it opens immediately so you can start writing. The two options below are separate: one nests it in the page list, the other links it to another page.</div>
     <input class="modal-input" id="newnote-name" placeholder="Note name" />
     <div class="modal-field-label">Type</div>
     <select class="modal-select" id="newnote-type">
       <option value="doc">Written note (doc)</option>
       <option value="table">Table</option>
     </select>
-    <div class="modal-field-label">Lives under</div>
+    <div class="modal-field-label">Lives under <span style="font-weight:400;color:var(--gray-2);">&mdash; where it's nested in the page list</span></div>
     <select class="modal-select" id="newnote-parent">
-      <option value="">Top level</option>
+      <option value="">Top level (its own row on the home page)</option>
     </select>
-    <div class="modal-field-label">Connected to</div>
+    <div class="modal-field-label">Connected to <span style="font-weight:400;color:var(--gray-2);">&mdash; links it to another page, optional</span></div>
     <select class="modal-select" id="newnote-connected">
-      <option value="">Nothing yet</option>
+      <option value="">No connection</option>
     </select>
+    <div class="modal-hint" style="margin-top:-2px;margin-bottom:0;">Once connected, a peek panel on the left edge of that page shows this note (and vice versa) &mdash; you can change or remove the connection anytime from there.</div>
     <div class="modal-actions">
       <button class="modal-btn" onclick="closeNewNote()">Cancel</button>
       <button class="modal-btn primary" onclick="submitNewNote()">Create &amp; open</button>
@@ -979,6 +1051,60 @@
     render();
   }
 
+  /* =====================================================================
+     TOAST + BRANDED CONFIRM + UNDO: replaces the browser's native
+     confirm()/alert() dialogs for deletions with an in-app "Studio Aa"
+     popup, and keeps a small in-memory snapshot stack so \u2318Z can reverse
+     the last destructive edit (delete a page/category/row).
+     ===================================================================== */
+  let toastTimer = null;
+  function showToast(message) {
+    const el = document.getElementById('toast');
+    el.textContent = message;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+  }
+
+  let pendingConfirmAction = null;
+  function showConfirmModal(message, onConfirm) {
+    pendingConfirmAction = onConfirm;
+    document.getElementById('confirm-message').textContent = message;
+    document.getElementById('confirm-backdrop').classList.add('show');
+  }
+  function closeConfirmModal() {
+    document.getElementById('confirm-backdrop').classList.remove('show');
+    pendingConfirmAction = null;
+  }
+  function confirmActionYes() {
+    const action = pendingConfirmAction;
+    closeConfirmModal();
+    if (action) action();
+  }
+
+  let undoStack = [];
+  function pushUndoSnapshot(label) {
+    undoStack.push({ pages: JSON.parse(JSON.stringify(pages)), cats: JSON.parse(JSON.stringify(cats)), label });
+    if (undoStack.length > 20) undoStack.shift();
+  }
+  function undoLast() {
+    if (!undoStack.length) return;
+    const snap = undoStack.pop();
+    pages = snap.pages;
+    cats = snap.cats;
+    savePages();
+    saveCats();
+    render();
+    showToast('Undone: ' + snap.label);
+  }
+  document.addEventListener('keydown', function (e) {
+    const mod = e.metaKey || e.ctrlKey;
+    if (mod && e.key.toLowerCase() === 'z') {
+      e.preventDefault();
+      undoLast();
+    }
+  });
+
   let view = localStorage.getItem('hq_view') || 'home';
   function goHome() { view = 'home'; localStorage.setItem('hq_view', 'home'); render(); }
   function openPage(key) { view = key; localStorage.setItem('hq_view', key); render(); }
@@ -992,11 +1118,15 @@
     openPage(key);
   }
   function delPage(key) {
-    if (pages.length <= 1) { alert('You need at least one page.'); return; }
-    if (!confirm('Delete "' + pages.find(p => p.key === key).label + '"? This can\u2019t be undone.')) return;
-    pages = pages.filter(p => p.key !== key);
-    savePages();
-    if (view === key) goHome(); else render();
+    if (pages.length <= 1) { showToast('You need at least one page.'); return; }
+    const label = pages.find(p => p.key === key).label;
+    showConfirmModal('Delete "' + label + '"? You can undo this with \u2318Z.', function () {
+      pushUndoSnapshot('delete "' + label + '"');
+      pages = pages.filter(p => p.key !== key);
+      savePages();
+      if (view === key) goHome(); else render();
+      showToast('Deleted "' + label + '" \u2014 \u2318Z to undo');
+    });
   }
 
   function pageMeta(p) {
@@ -1009,8 +1139,10 @@
     if (p.type === 'doc') return { icon: '\u00b6', meta: p.blocks.length + (p.blocks.length === 1 ? ' section' : ' sections') };
     return { icon: '\u25a2', meta: p.rows.length + (p.rows.length === 1 ? ' row' : ' rows') };
   }
-  /* ---------- page icon: quick pick from a set of 5, or "\u2026" for a custom one ---------- */
-  const EMOJI_PRESETS = ['\ud83d\udcc4', '\ud83d\udccb', '\ud83d\uddc2\ufe0f', '\ud83d\udca1', '\ud83c\udfaf'];
+  /* ---------- page icon: quick pick from a set of 5 monochrome glyphs (no
+     color emoji — these are plain text symbols, so they follow the app's
+     ink color in both light and dark mode), or "\u2026" for a custom one ---------- */
+  const EMOJI_PRESETS = ['\u25a4', '\u2630', '\u25a3', '\u270e', '\u25ce'];
   function openEmojiPicker(key, el) {
     const pop = document.getElementById('emoji-pop');
     const rect = el.getBoundingClientRect();
@@ -1189,8 +1321,20 @@
       }
     });
     const out = [];
-    roots.forEach(p => { out.push(p); (byParent[p.key] || []).forEach(c => out.push(c)); });
+    roots.forEach(p => {
+      const children = byParent[p.key] || [];
+      out.push({ page: p, hasChildren: children.length > 0, isChild: false });
+      children.forEach(c => out.push({ page: c, hasChildren: false, isChild: true, parentKey: p.key }));
+    });
     return out;
+  }
+  /* ---------- collapse/expand pages that have subpages, so nested pages
+     can be tucked away without deleting or moving them ---------- */
+  let collapsedPages = new Set(JSON.parse(localStorage.getItem('hq_collapsed_pages') || '[]'));
+  function toggleCollapse(key) {
+    if (collapsedPages.has(key)) collapsedPages.delete(key); else collapsedPages.add(key);
+    localStorage.setItem('hq_collapsed_pages', JSON.stringify([...collapsedPages]));
+    render();
   }
   function renamePage(key, text) {
     const p = pages.find(x => x.key === key);
@@ -1207,12 +1351,15 @@
     }
   }
   function homeHTML() {
-    const pagesListHTML = orderedPagesForDisplay().map(p => {
+    const pagesListHTML = orderedPagesForDisplay().map(entry => {
+      const p = entry.page;
       const m = pageMeta(p);
       const connected = p.connectedTo ? pages.find(x => x.key === p.connectedTo) : null;
-      return '<div class="prow' + (p.parent ? ' prow-child' : '') + '" data-signal="' + (p.signal ? 1 : 0) + '" onclick="openPage(\'' + p.key + '\')">' +
+      const collapsed = collapsedPages.has(p.key);
+      const hideAsChild = entry.isChild && collapsedPages.has(entry.parentKey);
+      return '<div class="prow' + (entry.isChild ? ' prow-child' : '') + (hideAsChild ? ' collapsed-child' : '') + '" data-signal="' + (p.signal ? 1 : 0) + '" onclick="openPage(\'' + p.key + '\')">' +
         '<span class="prow-star' + (p.signal ? ' on' : '') + '" onclick="event.stopPropagation(); toggleSignal(\'' + p.key + '\')" title="Mark as signal">' + (p.signal ? '\u2605' : '\u2606') + '</span>' +
-        (p.parent ? '<span class="prow-parent-hint">\u21b3</span>' : '') +
+        (entry.hasChildren ? '<span class="prow-collapse' + (collapsed ? '' : ' open') + '" onclick="event.stopPropagation(); toggleCollapse(\'' + p.key + '\')" title="Show/hide subpages">\u25b6</span>' : (entry.isChild ? '<span class="prow-parent-hint">\u21b3</span>' : '')) +
         '<span class="prow-icon" onclick="event.stopPropagation(); openEmojiPicker(\'' + p.key + '\', this)" title="Click to change icon">' + m.icon + '</span>' +
         '<span class="prow-name" id="prowname-' + p.key + '" contenteditable spellcheck="false" onclick="event.stopPropagation()" oninput="renamePage(\'' + p.key + '\', this.textContent)">' + esc(p.label) + '</span>' +
         (connected ? '<span class="prow-connected" onclick="event.stopPropagation(); openPage(\'' + connected.key + '\')" title="Connected page">\u2192 ' + esc(connected.label) + '</span>' : '') +
@@ -1244,9 +1391,13 @@
 
   /* ---------- side panel: appearance / account / pages, hover-out from right edge ---------- */
   function renderSidePanel() {
-    document.getElementById('sp-pages').innerHTML = pages.map(p => {
+    document.getElementById('sp-pages').innerHTML = orderedPagesForDisplay().map(entry => {
+      const p = entry.page;
       const m = pageMeta(p);
-      return '<div class="sp-page" onclick="openPage(\'' + p.key + '\')">' +
+      const collapsed = collapsedPages.has(p.key);
+      const hideAsChild = entry.isChild && collapsedPages.has(entry.parentKey);
+      return '<div class="sp-page' + (hideAsChild ? ' collapsed-child' : '') + '" onclick="openPage(\'' + p.key + '\')">' +
+        (entry.hasChildren ? '<span class="sp-collapse' + (collapsed ? '' : ' open') + '" onclick="event.stopPropagation(); toggleCollapse(\'' + p.key + '\')">\u25b6</span>' : '') +
         '<span class="pi">' + m.icon + '</span>' +
         '<span class="sp-page-name" id="spname-' + p.key + '" contenteditable spellcheck="false" onclick="event.stopPropagation()" oninput="renamePage(\'' + p.key + '\', this.textContent)">' + esc(p.label) + '</span>' +
         '</div>';
@@ -1257,7 +1408,24 @@
     const el = document.getElementById('crumb');
     if (view === 'home') { el.innerHTML = ''; return; }
     const p = pages.find(x => x.key === view);
-    el.innerHTML = '<span class="crumb-sep"> / </span><span class="crumb-cur">' + esc(p ? p.label : '') + '</span>';
+    el.innerHTML = '<span class="crumb-sep"> / </span><span class="crumb-cur">' + esc(p ? p.label : '') + '</span>' +
+      (p ? '<span class="crumb-connect" onclick="openConnectPicker(\'' + p.key + '\')" title="Connect this page to another">' +
+        (p.connectedTo ? '\u2192 connected' : '+ connect') + '</span>' : '');
+  }
+  function openConnectPicker(key) {
+    const target = prompt(
+      'Type the exact name of the page to connect to (blank to remove connection):\n\n' +
+      pages.filter(x => x.key !== key && x.type !== 'group').map(x => '\u2022 ' + x.label).join('\n')
+    );
+    if (target === null) return;
+    const p = pages.find(x => x.key === key);
+    if (!p) return;
+    if (!target.trim()) { p.connectedTo = null; savePages(); render(); return; }
+    const match = pages.find(x => x.label.toLowerCase() === target.trim().toLowerCase() && x.key !== key);
+    if (!match) { alert('No page found with that exact name.'); return; }
+    p.connectedTo = match.key;
+    savePages();
+    render();
   }
 
   /* =====================================================================
@@ -1552,13 +1720,17 @@
     setActive(key);
   }
   function delCat(key) {
-    if (cats.length <= 1) { alert('You need at least one category.'); return; }
-    if (!confirm('Delete "' + cats.find(c => c.key === key).label + '"? This can\u2019t be undone.')) return;
-    cats = cats.filter(c => c.key !== key);
-    saveCats();
-    if (activeKey === key) activeKey = cats[0].key;
-    localStorage.setItem('hq_active_cat', activeKey);
-    renderNav(); renderTable();
+    if (cats.length <= 1) { showToast('You need at least one category.'); return; }
+    const label = cats.find(c => c.key === key).label;
+    showConfirmModal('Delete "' + label + '"? You can undo this with \u2318Z.', function () {
+      pushUndoSnapshot('delete "' + label + '"');
+      cats = cats.filter(c => c.key !== key);
+      saveCats();
+      if (activeKey === key) activeKey = cats[0].key;
+      localStorage.setItem('hq_active_cat', activeKey);
+      renderNav(); renderTable();
+      showToast('Deleted "' + label + '" \u2014 \u2318Z to undo');
+    });
   }
   /* =====================================================================
      TABLE SHARED HELPERS: column types (text / checkbox / multi-select)
@@ -1943,6 +2115,7 @@
   function render() {
     renderCrumb();
     renderSidePanel();
+    renderConnectedPeek();
     const app = document.getElementById('app');
     if (view === 'home') {
       app.innerHTML = homeHTML();
@@ -1959,6 +2132,53 @@
       view = 'home'; localStorage.setItem('hq_view', 'home');
       app.innerHTML = homeHTML();
     }
+  }
+
+  /* =====================================================================
+     CONNECTED PAGE PEEK: when the open page has a connectedTo set, a
+     left-edge peel-out panel (mirrors the right-edge side panel) shows a
+     preview of that page and lets you jump to it or disconnect \u2014 this
+     replaces guessing what the "connected to" dropdown does with a live
+     visual result you can actually interact with.
+     ===================================================================== */
+  function renderConnectedPeek() {
+    const edge = document.getElementById('edge-hover-left');
+    const peek = document.getElementById('connected-peek');
+    const p = curPage();
+    const connected = p && p.connectedTo ? pages.find(x => x.key === p.connectedTo) : null;
+    if (!connected) {
+      edge.classList.remove('show');
+      peek.innerHTML = '';
+      return;
+    }
+    edge.classList.add('show');
+    const m = pageMeta(connected);
+    peek.innerHTML =
+      '<div class="cp-label">Connected to</div>' +
+      '<div class="cp-name" onclick="openPage(\'' + connected.key + '\')">' + m.icon + ' ' + esc(connected.label) + '</div>' +
+      '<div class="cp-meta">' + m.meta + '</div>' +
+      '<div class="cp-preview">' + connectedPreviewHTML(connected) + '</div>' +
+      '<div class="cp-actions">' +
+      '<button class="modal-btn primary" onclick="openPage(\'' + connected.key + '\')">Open</button>' +
+      '<button class="modal-btn" onclick="disconnectPage(\'' + p.key + '\')">Disconnect</button>' +
+      '</div>';
+  }
+  function connectedPreviewHTML(p) {
+    if (p.type === 'doc') {
+      const first = (p.blocks || []).find(b => b.html);
+      return first ? esc((first.html || '').replace(/<[^>]+>/g, '')).slice(0, 140) : 'Empty note.';
+    }
+    if (p.type === 'table' && p.rows && p.rows.length) {
+      return esc(p.rows[0].filter(Boolean).join(' \u00b7 ')).slice(0, 140);
+    }
+    return 'No preview available.';
+  }
+  function disconnectPage(key) {
+    const p = pages.find(x => x.key === key);
+    if (!p) return;
+    p.connectedTo = null;
+    savePages();
+    render();
   }
 
   /* =====================================================================
@@ -2063,12 +2283,24 @@
   }
 
   function renderWorkspaceSwitcher(workspaces) {
-    const el = document.getElementById('workspace-switcher');
-    if (!el) return;
-    el.innerHTML = workspaces.map(w =>
-      '<div class="ws-item' + (w.id === currentWorkspaceId ? ' on' : '') + '" onclick="switchWorkspace(' + w.id + ', \'' + jsAttrStr(w.name) + '\', \'' + w.role + '\')">' + esc(w.name) + '</div>'
+    const itemsHTML = workspaces.map(w =>
+      '<div class="ws-item' + (w.id === currentWorkspaceId ? ' on' : '') + '" onclick="switchWorkspace(' + w.id + ', \'' + jsAttrStr(w.name) + '\', \'' + w.role + '\'); closeHeaderWsPop();">' + esc(w.name) + '</div>'
     ).join('') + '<div class="ws-item ws-new" onclick="createNewWorkspace()">+ New workspace</div>';
+    const el = document.getElementById('workspace-switcher');
+    if (el) el.innerHTML = itemsHTML;
+    const hdrPop = document.getElementById('hdr-ws-pop');
+    if (hdrPop) hdrPop.innerHTML = itemsHTML;
   }
+  function toggleHeaderWsPop() {
+    document.getElementById('hdr-ws-pop').classList.toggle('show');
+  }
+  function closeHeaderWsPop() {
+    document.getElementById('hdr-ws-pop').classList.remove('show');
+  }
+  document.addEventListener('click', function (e) {
+    const pop = document.getElementById('hdr-ws-pop');
+    if (pop && pop.classList.contains('show') && !pop.contains(e.target) && !e.target.closest('.hdr-ws-caret')) closeHeaderWsPop();
+  });
 
   function createNewWorkspace() {
     const name = prompt('Name this workspace:');
