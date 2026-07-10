@@ -424,6 +424,10 @@
   .sp-page-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .sp-page-name[contenteditable] { outline: none; cursor: text; }
   .sp-page-name[contenteditable]:focus { background: var(--hover); border-radius: 4px; }
+  .ws-item { padding: 6px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ws-item:hover { background: var(--hover); }
+  .ws-item.on { color: var(--ink); background: var(--hover); }
+  .ws-item.ws-new { color: var(--gray-2); font-weight: 500; }
   .sp-tools { display: flex; flex-direction: column; gap: 1px; }
   .sp-tool-primary {
     background: var(--ink); color: var(--bg); border-radius: 7px; margin-bottom: 6px; font-weight: 700;
@@ -551,6 +555,13 @@
     </div>
   </div>
   <div class="sp-section">
+    <div class="sp-row">
+      <div class="sp-label" style="margin-bottom:0;">Workspace</div>
+      <button class="signout" id="members-btn" onclick="openMembers()" style="display:none;">members</button>
+    </div>
+    <div id="workspace-switcher"></div>
+  </div>
+  <div class="sp-section">
     <div class="sp-label">Pages</div>
     <div class="sp-tool sp-tool-primary" onclick="openNewNote()"><span class="sp-tool-i">+</span>New note</div>
     <div class="sp-pages" id="sp-pages"></div>
@@ -568,6 +579,21 @@
     </div>
   </div>
 </aside>
+
+<div class="modal-backdrop" id="members-backdrop" onclick="if(event.target===this) closeMembers()">
+  <div class="modal-card">
+    <div class="modal-title">Workspace members</div>
+    <div class="modal-hint">Invite by email — they'll get in next time they sign in with Google using that address.</div>
+    <div class="invite-row">
+      <input class="modal-input" id="members-invite-email" placeholder="teammate@email.com" />
+      <button class="modal-btn primary" onclick="submitInvite()">Invite</button>
+    </div>
+    <div id="members-list" style="margin-top:14px;"></div>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeMembers()">Done</button>
+    </div>
+  </div>
+</div>
 
 <div class="modal-backdrop" id="import-backdrop" onclick="if(event.target===this) closeImport()">
   <div class="modal-card">
@@ -624,8 +650,8 @@
       <div class="ob-sub">Shown at the top of your home page. You can change it later.</div>
       <input class="ob-input" id="ob-name-input" placeholder="e.g. Acme Studio Ops" />
       <div class="ob-actions">
-        <button class="ob-skip" onclick="obGoto(2)">Skip</button>
-        <button class="ob-next" onclick="obSetName()">Next</button>
+        <button class="ob-skip" onclick="obCreateWorkspace()">Skip</button>
+        <button class="ob-next" onclick="obCreateWorkspace()">Next</button>
       </div>
     </div>
     <div class="ob-step" id="ob-step-2">
@@ -695,12 +721,8 @@
   }
   applyFocusMode();
 
-  /* ---------- who's signed in ---------- */
-  fetch('/api/me').then(r => r.ok ? r.json() : null).then(me => {
-    if (!me) return;
-    document.getElementById('who').textContent = me.name || me.email || '';
-    document.getElementById('signout-btn').style.display = '';
-  }).catch(() => {});
+  /* ---------- who's signed in: see boot() near the bottom, which handles
+     /api/me plus loading the right workspace's data ---------- */
   function signOut() {
     fetch('/api/logout', { method: 'POST' }).then(() => window.location.href = '/login.html');
   }
@@ -935,8 +957,8 @@
     { key: 'ette', label: 'ette', type: 'table', cols: ['Item', 'Status', 'Notes'], rows: [['', '', '']] }
   ];
 
-  let pages = JSON.parse(localStorage.getItem('hq_pages') || 'null') || SEED_PAGES;
-  function savePages() { localStorage.setItem('hq_pages', JSON.stringify(pages)); touchActivity(); }
+  let pages = SEED_PAGES;
+  function savePages() { saveWorkspaceData(); touchActivity(); }
   function touchActivity() { localStorage.setItem('hq_last_active', String(Date.now())); }
   function timeAgo() {
     const ts = Number(localStorage.getItem('hq_last_active') || 0);
@@ -1021,10 +1043,32 @@
     const pop = document.getElementById('emoji-pop');
     if (pop.classList.contains('show') && !pop.contains(e.target) && !e.target.closest('.prow-icon')) closeEmojiPicker();
   });
-  let workspaceName = localStorage.getItem('hq_workspace_name') || 'Your Workspace';
+  let workspaceName = 'Your Workspace';
   function saveWorkspaceName(name) {
     workspaceName = name;
-    localStorage.setItem('hq_workspace_name', workspaceName);
+    if (currentWorkspaceId) {
+      fetch('/api/workspaces/' + currentWorkspaceId, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: workspaceName })
+      }).catch(() => {});
+    }
+  }
+
+  /* ---------- server-backed workspace data (replaces localStorage for
+     pages/categories) ---------- */
+  let currentWorkspaceId = null;
+  let saveWorkspaceDataTimer = null;
+  function saveWorkspaceData() {
+    if (!currentWorkspaceId) return;
+    clearTimeout(saveWorkspaceDataTimer);
+    saveWorkspaceDataTimer = setTimeout(() => {
+      fetch('/api/workspaces/' + currentWorkspaceId + '/data', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ pages, categories: cats })
+      }).catch(() => {});
+    }, 400);
   }
 
   /* =====================================================================
@@ -1444,18 +1488,18 @@
     }
   ];
 
-  let cats = JSON.parse(localStorage.getItem('hq_categories') || 'null') || SEED_CATS;
+  let cats = SEED_CATS;
   let activeKey = localStorage.getItem('hq_active_cat') || cats[0].key;
-  function saveCats() { localStorage.setItem('hq_categories', JSON.stringify(cats)); touchActivity(); }
+  function saveCats() { saveWorkspaceData(); touchActivity(); }
   function setActive(key) { activeKey = key; localStorage.setItem('hq_active_cat', key); renderNav(); renderTable(); }
   function activeCat() { return cats.find(c => c.key === activeKey) || cats[0]; }
 
   /* ---------- one-off client demo: visit ?demo=lola to load the redacted
-     real dataset above instead of the generic sample seed. Persists to this
-     browser's localStorage same as any other edit, so it survives reload;
-     visit ?reset=1 afterward to wipe it and go back to sample data. ---------- */
-  (function maybeLoadLolaDemo() {
-    if (new URLSearchParams(window.location.search).get('demo') !== 'lola') return;
+     real dataset above instead of the generic sample seed. Persists to the
+     current workspace same as any other edit, so it survives reload; run
+     from boot() once the workspace/session is known. ---------- */
+  function maybeLoadLolaDemo() {
+    if (new URLSearchParams(window.location.search).get('demo') !== 'lola') return false;
     pages = JSON.parse(JSON.stringify(LOLA_DEMO_PAGES));
     cats = JSON.parse(JSON.stringify(LOLA_DEMO_CATS));
     activeKey = cats[0].key;
@@ -1467,7 +1511,8 @@
     savePages();
     saveCats();
     window.history.replaceState({}, '', window.location.pathname);
-  })();
+    return true;
+  }
 
   function jobSheetShellHTML() {
     return '<div class="shell"><nav id="nav"></nav><main>' +
@@ -1932,8 +1977,11 @@
       document.getElementById('ob-chip-dark').classList.toggle('on', document.body.classList.contains('dark'));
     }
   }
-  function obSetName() {
+  function obCreateWorkspace() {
     const val = document.getElementById('ob-name-input').value.trim();
+    // The server already auto-creates a workspace on first sign-in (see
+    // server.py's OAuth callback) — this just names it if the user typed
+    // something, rather than creating a second one.
     if (val) saveWorkspaceName(val);
     obGoto(2);
   }
@@ -1957,8 +2005,130 @@
     document.getElementById('onboard-backdrop').classList.add('show');
   }
 
-  render();
-  maybeOnboard();
+  /* =====================================================================
+     BOOT: pages/categories now live in Postgres, scoped per workspace,
+     instead of localStorage. Sequence: who am I -> which workspaces do I
+     have -> pick one -> load its data (lazy-seed from the demo constants
+     if it's brand new) -> render.
+     ===================================================================== */
+  function boot() {
+    fetch('/api/me').then(r => r.ok ? r.json() : null).then(me => {
+      if (!me) { render(); return; } // not signed in; server already redirects index.html -> login.html
+      document.getElementById('who').textContent = me.name || me.email || '';
+      document.getElementById('signout-btn').style.display = '';
+      return fetch('/api/workspaces').then(r => r.json()).then(workspaces => {
+        knownWorkspaces = workspaces;
+        renderWorkspaceSwitcher(workspaces);
+        if (!workspaces.length) {
+          // No workspace yet (shouldn't normally happen — the server bootstraps
+          // one on first sign-in — but handle it defensively).
+          render();
+          maybeOnboard();
+          return;
+        }
+        const lastId = Number(localStorage.getItem('hq_last_workspace_id'));
+        const ws = workspaces.find(w => w.id === lastId) || workspaces[0];
+        return switchWorkspace(ws.id, ws.name, ws.role, true);
+      });
+    }).catch(() => { render(); });
+  }
+
+  let knownWorkspaces = [];
+  let currentWorkspaceRole = 'member';
+  function switchWorkspace(id, name, role, isInitialBoot) {
+    currentWorkspaceId = id;
+    workspaceName = name;
+    currentWorkspaceRole = role || 'member';
+    document.getElementById('members-btn').style.display = currentWorkspaceRole === 'owner' ? '' : 'none';
+    localStorage.setItem('hq_last_workspace_id', String(id));
+    renderWorkspaceSwitcher(knownWorkspaces);
+    return fetch('/api/workspaces/' + id + '/data').then(r => r.json()).then(data => {
+      const isEmpty = !data.pages || !data.pages.length;
+      if (isEmpty) {
+        // Brand-new workspace: lazy-seed from the demo constants and persist
+        // immediately, so this workspace has real content from here on.
+        pages = JSON.parse(JSON.stringify(SEED_PAGES));
+        cats = JSON.parse(JSON.stringify(SEED_CATS));
+        savePages();
+        saveCats();
+      } else {
+        pages = data.pages;
+        cats = data.categories || SEED_CATS;
+      }
+      activeKey = localStorage.getItem('hq_active_cat') || cats[0].key;
+      maybeLoadLolaDemo(); // also sets hq_onboarded, so maybeOnboard() below is a no-op when it fires
+      render();
+      if (isInitialBoot) maybeOnboard();
+    });
+  }
+
+  function renderWorkspaceSwitcher(workspaces) {
+    const el = document.getElementById('workspace-switcher');
+    if (!el) return;
+    el.innerHTML = workspaces.map(w =>
+      '<div class="ws-item' + (w.id === currentWorkspaceId ? ' on' : '') + '" onclick="switchWorkspace(' + w.id + ', \'' + jsAttrStr(w.name) + '\', \'' + w.role + '\')">' + esc(w.name) + '</div>'
+    ).join('') + '<div class="ws-item ws-new" onclick="createNewWorkspace()">+ New workspace</div>';
+  }
+
+  function createNewWorkspace() {
+    const name = prompt('Name this workspace:');
+    if (!name || !name.trim()) return;
+    fetch('/api/workspaces', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: name.trim() })
+    }).then(r => r.json()).then(ws => {
+      return fetch('/api/workspaces').then(r => r.json()).then(workspaces => {
+        knownWorkspaces = workspaces;
+        return switchWorkspace(ws.id, ws.name, ws.role);
+      });
+    }).catch(() => {});
+  }
+
+  /* ---------- members modal (owner-only invite/remove) ---------- */
+  function openMembers() {
+    document.getElementById('members-backdrop').classList.add('show');
+    loadMembers();
+  }
+  function closeMembers() {
+    document.getElementById('members-backdrop').classList.remove('show');
+  }
+  function loadMembers() {
+    fetch('/api/workspaces/' + currentWorkspaceId + '/members').then(r => r.json()).then(data => {
+      const rows = (data.members || []).map(m =>
+        '<div class="modal-hint" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+        '<span>' + esc(m.name || m.email) + ' &mdash; ' + m.role + '</span>' +
+        (m.role === 'owner' ? '' : '<button class="modal-btn" onclick="removeMember(\'' + jsAttrStr(m.email) + '\')">Remove</button>') +
+        '</div>'
+      ).join('');
+      const invites = (data.invites || []).map(i =>
+        '<div class="modal-hint" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+        '<span>' + esc(i.email) + ' &mdash; invited (' + i.role + ')</span>' +
+        '<button class="modal-btn" onclick="removeMember(\'' + jsAttrStr(i.email) + '\')">Cancel</button>' +
+        '</div>'
+      ).join('');
+      document.getElementById('members-list').innerHTML = rows + invites;
+    }).catch(() => {});
+  }
+  function submitInvite() {
+    const email = document.getElementById('members-invite-email').value.trim();
+    if (!email) return;
+    fetch('/api/workspaces/' + currentWorkspaceId + '/members', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: email, role: 'member' })
+    }).then(() => {
+      document.getElementById('members-invite-email').value = '';
+      loadMembers();
+    }).catch(() => {});
+  }
+  function removeMember(email) {
+    fetch('/api/workspaces/' + currentWorkspaceId + '/members/' + encodeURIComponent(email), {
+      method: 'DELETE'
+    }).then(loadMembers).catch(() => {});
+  }
+
+  boot();
 </script>
 </body>
 </html>

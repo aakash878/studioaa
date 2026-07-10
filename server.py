@@ -11,27 +11,45 @@ and adds:
                          verify it, and start a session.
   - GET  /api/me         who's currently signed in (or 401).
   - POST /api/logout     clears the session.
+  - GET  /api/workspaces                       workspaces the signed-in user belongs to.
+  - POST /api/workspaces                       create a new workspace (caller becomes owner).
+  - PATCH /api/workspaces/<id>                 rename a workspace (owner-only).
+  - GET  /PUT /api/workspaces/<id>/data         read/write a workspace's pages+categories.
+  - GET  /POST /api/workspaces/<id>/members     list / invite members (owner-only).
+  - DELETE /api/workspaces/<id>/members/<email> remove a member or pending invite (owner-only).
 index.html/login.html gate on that session: visiting index.html while signed
 out bounces you to login.html, and vice versa.
 
 Both the Claude key and the Google client secret stay server-side — neither is
 ever embedded in the static HTML/JS shipped to the browser.
 
+Data (users, workspaces, memberships, and each workspace's pages/categories)
+lives in Postgres — see init_db() for the schema. Every account is scoped to
+one or more workspaces instead of one shared global dataset, so different
+clients/collaborators don't see each other's data.
+
 Usage:
     export ANTHROPIC_API_KEY=sk-ant-...
     export GOOGLE_CLIENT_ID=...apps.googleusercontent.com
     export GOOGLE_CLIENT_SECRET=...
     export GOOGLE_REDIRECT_URI=http://127.0.0.1:8080/oauth/callback   # or your deployed URL
-    export ALLOWED_EMAILS=aakash@studioaamgmt.com   # comma-separated allowlist, defaults to this
+    export ALLOWED_EMAILS=aakash@studioaamgmt.com   # bootstrap allowlist, see note below
+    export DATABASE_URL=postgres://user:pass@host:5432/dbname   # Render sets this automatically
     export ALLOW_DEV_LOGIN=1   # optional, re-enables the no-auth /dev-login bypass locally
     python3 server.py            # serves on http://127.0.0.1:8080 locally, or $PORT on a host
 
-Uses only the Python standard library (no flask/requests installed on this
-machine) — http.server for routing, urllib.request for outbound calls to the
-Claude and Google APIs, http.cookies for the session cookie.
+ALLOWED_EMAILS is only a *bootstrap* gate: an allowlisted email with no
+workspace yet gets a brand-new workspace (as owner) on first sign-in. Anyone
+else can only sign in if they already belong to a workspace or have a pending
+invite waiting for their email — see _oauth_callback.
+
+Uses the Python standard library for HTTP (http.server for routing,
+urllib.request for outbound calls to the Claude and Google APIs,
+http.cookies for the session cookie) plus psycopg2 for Postgres.
 """
 import json
 import os
+import re
 import secrets
 import time
 import urllib.error
@@ -39,6 +57,9 @@ import urllib.parse
 import urllib.request
 from http.cookies import SimpleCookie
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
+
+import psycopg2
+import psycopg2.extras
 
 API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 # Claude Haiku 4.5 — this is a cheap, high-frequency, single-decision classification
@@ -89,24 +110,139 @@ REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", f"http://127.0.0.1:{PORT}/o
 # openid/email/profile identify who signed in; gmail.readonly is the scope
 # you'll need once the app actually reads mail, not just logs you in.
 GOOGLE_SCOPES = "openid email profile https://www.googleapis.com/auth/gmail.readonly"
-# Only these Google accounts may sign in — this holds real client/financial
-# data once it's on the public internet, so anonymous Google sign-in isn't safe.
-# Override on the host with ALLOWED_EMAILS=a@x.com,b@y.com (comma-separated).
-ALLOWED_EMAILS = {
-    e.strip().lower()
-    for e in os.environ.get("ALLOWED_EMAILS", "aakash@studioaamgmt.com").split(",")
-    if e.strip()
-}
-
-# Real client/financial data lives behind this login once deployed, so sign-in
-# is locked to specific emails rather than "any Google account". Comma-separated,
-# case-insensitive. Empty/unset = allow nobody (fail closed, not open).
+# Bootstrap allowlist: an email here with zero workspaces gets a brand-new
+# workspace on first sign-in. Anyone else needs an existing membership or a
+# pending invite (see _oauth_callback). Comma-separated, case-insensitive.
+# Empty/unset = allow nobody in as a fresh bootstrap (fail closed, not open).
 ALLOWED_EMAILS = {
     e.strip().lower() for e in os.environ.get("ALLOWED_EMAILS", "").split(",") if e.strip()
 }
 
-SESSIONS = {}       # session id -> { email, name, access_token, refresh_token }
+# ---------- Postgres (users, workspaces, membership, per-workspace data) ----------
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+
+def get_conn():
+    return psycopg2.connect(DATABASE_URL)
+
+
+def init_db():
+    if not DATABASE_URL:
+        return
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                email TEXT UNIQUE NOT NULL,
+                name TEXT,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+            );
+            CREATE TABLE IF NOT EXISTS workspaces (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                created_by INTEGER REFERENCES users(id),
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+            );
+            CREATE TABLE IF NOT EXISTS workspace_members (
+                workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                role TEXT NOT NULL DEFAULT 'member',
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                PRIMARY KEY (workspace_id, user_id)
+            );
+            CREATE TABLE IF NOT EXISTS workspace_invites (
+                workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+                email TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'member',
+                invited_by INTEGER REFERENCES users(id),
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                PRIMARY KEY (workspace_id, email)
+            );
+            CREATE TABLE IF NOT EXISTS workspace_data (
+                workspace_id INTEGER PRIMARY KEY REFERENCES workspaces(id) ON DELETE CASCADE,
+                pages JSONB,
+                categories JSONB,
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+            );
+        """)
+        conn.commit()
+
+
+def upsert_user(email, name):
+    email = email.lower()
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO users (email, name) VALUES (%s, %s)
+            ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name
+            RETURNING id
+            """,
+            (email, name),
+        )
+        user_id = cur.fetchone()[0]
+        conn.commit()
+        return user_id
+
+
+def apply_pending_invites(user_id, email):
+    """Turn any invites addressed to this email into real memberships."""
+    email = email.lower()
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("SELECT workspace_id, role FROM workspace_invites WHERE email = %s", (email,))
+        invites = cur.fetchall()
+        for workspace_id, role in invites:
+            cur.execute(
+                """
+                INSERT INTO workspace_members (workspace_id, user_id, role)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (workspace_id, user_id) DO NOTHING
+                """,
+                (workspace_id, user_id, role),
+            )
+        cur.execute("DELETE FROM workspace_invites WHERE email = %s", (email,))
+        conn.commit()
+
+
+def user_workspace_count(user_id):
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("SELECT COUNT(*) FROM workspace_members WHERE user_id = %s", (user_id,))
+        return cur.fetchone()[0]
+
+
+def create_workspace(name, owner_user_id):
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO workspaces (name, created_by) VALUES (%s, %s) RETURNING id",
+            (name, owner_user_id),
+        )
+        workspace_id = cur.fetchone()[0]
+        cur.execute(
+            "INSERT INTO workspace_members (workspace_id, user_id, role) VALUES (%s, %s, 'owner')",
+            (workspace_id, owner_user_id),
+        )
+        cur.execute(
+            "INSERT INTO workspace_data (workspace_id, pages, categories) VALUES (%s, NULL, NULL)",
+            (workspace_id,),
+        )
+        conn.commit()
+        return workspace_id
+
+
+def workspace_role(cur, user_id, workspace_id):
+    cur.execute(
+        "SELECT role FROM workspace_members WHERE workspace_id = %s AND user_id = %s",
+        (workspace_id, user_id),
+    )
+    row = cur.fetchone()
+    return row[0] if row else None
+
+
+SESSIONS = {}       # session id -> { user_id, email, name, access_token, refresh_token }
 PENDING_STATES = {}  # oauth "state" csrf token -> issued_at, so callback can't be spoofed
+WORKSPACE_RE = re.compile(r"^/api/workspaces/(\d+)$")
+WORKSPACE_DATA_RE = re.compile(r"^/api/workspaces/(\d+)/data$")
+WORKSPACE_MEMBERS_RE = re.compile(r"^/api/workspaces/(\d+)/members$")
+WORKSPACE_MEMBER_RE = re.compile(r"^/api/workspaces/(\d+)/members/([^/]+)$")
 
 
 def _session_from_cookie(handler):
@@ -140,6 +276,65 @@ class Handler(SimpleHTTPRequestHandler):
             else:
                 self._reply(200, {"email": session["email"], "name": session["name"]})
             return
+        if path == "/api/workspaces":
+            session = self._require_session()
+            if not session:
+                return
+            with get_conn() as conn, conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT w.id, w.name, m.role FROM workspaces w
+                    JOIN workspace_members m ON m.workspace_id = w.id
+                    WHERE m.user_id = %s ORDER BY w.id
+                    """,
+                    (session["user_id"],),
+                )
+                rows = cur.fetchall()
+            self._reply(200, [{"id": r[0], "name": r[1], "role": r[2]} for r in rows])
+            return
+        m = WORKSPACE_DATA_RE.match(path)
+        if m:
+            session = self._require_session()
+            if not session:
+                return
+            workspace_id = int(m.group(1))
+            with get_conn() as conn, conn.cursor() as cur:
+                if not workspace_role(cur, session["user_id"], workspace_id):
+                    self._reply(403, {"error": "not a member of this workspace"})
+                    return
+                cur.execute(
+                    "SELECT pages, categories FROM workspace_data WHERE workspace_id = %s",
+                    (workspace_id,),
+                )
+                row = cur.fetchone()
+            self._reply(200, {"pages": row[0] if row else None, "categories": row[1] if row else None})
+            return
+        m = WORKSPACE_MEMBERS_RE.match(path)
+        if m:
+            session = self._require_session()
+            if not session:
+                return
+            workspace_id = int(m.group(1))
+            with get_conn() as conn, conn.cursor() as cur:
+                if workspace_role(cur, session["user_id"], workspace_id) != "owner":
+                    self._reply(403, {"error": "only the workspace owner can view members"})
+                    return
+                cur.execute(
+                    """
+                    SELECT u.email, u.name, m.role FROM workspace_members m
+                    JOIN users u ON u.id = m.user_id
+                    WHERE m.workspace_id = %s ORDER BY m.created_at
+                    """,
+                    (workspace_id,),
+                )
+                members = [{"email": r[0], "name": r[1], "role": r[2]} for r in cur.fetchall()]
+                cur.execute(
+                    "SELECT email, role FROM workspace_invites WHERE workspace_id = %s ORDER BY created_at",
+                    (workspace_id,),
+                )
+                invites = [{"email": r[0], "role": r[1]} for r in cur.fetchall()]
+            self._reply(200, {"members": members, "invites": invites})
+            return
         if path in ("/", "/index.html") and not _session_from_cookie(self):
             self._redirect("/login.html")
             return
@@ -147,6 +342,111 @@ class Handler(SimpleHTTPRequestHandler):
             self._redirect("/index.html")
             return
         super().do_GET()
+
+    def do_PUT(self):
+        parsed = urllib.parse.urlparse(self.path)
+        path = parsed.path
+        m = WORKSPACE_DATA_RE.match(path)
+        if not m:
+            self.send_error(404)
+            return
+        session = self._require_session()
+        if not session:
+            return
+        workspace_id = int(m.group(1))
+        body = self._read_json_body()
+        if body is None:
+            return
+        with get_conn() as conn, conn.cursor() as cur:
+            if not workspace_role(cur, session["user_id"], workspace_id):
+                self._reply(403, {"error": "not a member of this workspace"})
+                return
+            cur.execute(
+                """
+                UPDATE workspace_data SET pages = %s, categories = %s, updated_at = now()
+                WHERE workspace_id = %s
+                """,
+                (
+                    psycopg2.extras.Json(body.get("pages")),
+                    psycopg2.extras.Json(body.get("categories")),
+                    workspace_id,
+                ),
+            )
+            conn.commit()
+        self._reply(204, None)
+
+    def do_PATCH(self):
+        parsed = urllib.parse.urlparse(self.path)
+        path = parsed.path
+        m = WORKSPACE_RE.match(path)
+        if not m:
+            self.send_error(404)
+            return
+        session = self._require_session()
+        if not session:
+            return
+        workspace_id = int(m.group(1))
+        body = self._read_json_body()
+        if body is None:
+            return
+        name = (body.get("name") or "").strip()
+        if not name:
+            self._reply(400, {"error": "missing name"})
+            return
+        with get_conn() as conn, conn.cursor() as cur:
+            if workspace_role(cur, session["user_id"], workspace_id) != "owner":
+                self._reply(403, {"error": "only the workspace owner can rename it"})
+                return
+            cur.execute("UPDATE workspaces SET name = %s WHERE id = %s", (name, workspace_id))
+            conn.commit()
+        self._reply(200, {"id": workspace_id, "name": name})
+
+    def do_DELETE(self):
+        parsed = urllib.parse.urlparse(self.path)
+        path = parsed.path
+        m = WORKSPACE_MEMBER_RE.match(path)
+        if not m:
+            self.send_error(404)
+            return
+        session = self._require_session()
+        if not session:
+            return
+        workspace_id = int(m.group(1))
+        target_email = urllib.parse.unquote(m.group(2)).lower()
+        with get_conn() as conn, conn.cursor() as cur:
+            if workspace_role(cur, session["user_id"], workspace_id) != "owner":
+                self._reply(403, {"error": "only the workspace owner can remove members"})
+                return
+            cur.execute(
+                "SELECT COUNT(*) FROM workspace_members WHERE workspace_id = %s AND role = 'owner'",
+                (workspace_id,),
+            )
+            owner_count = cur.fetchone()[0]
+            cur.execute(
+                """
+                SELECT m.role FROM workspace_members m JOIN users u ON u.id = m.user_id
+                WHERE m.workspace_id = %s AND u.email = %s
+                """,
+                (workspace_id, target_email),
+            )
+            row = cur.fetchone()
+            if row and row[0] == "owner" and owner_count <= 1:
+                self._reply(400, {"error": "can't remove the last owner of a workspace"})
+                return
+            cur.execute(
+                """
+                DELETE FROM workspace_members WHERE workspace_id = %s AND user_id = (
+                    SELECT id FROM users WHERE email = %s
+                )
+                """,
+                (workspace_id, target_email),
+            )
+            cur.execute(
+                "DELETE FROM workspace_invites WHERE workspace_id = %s AND email = %s",
+                (workspace_id, target_email),
+            )
+            conn.commit()
+        self._reply(204, None)
 
     def do_POST(self):
         if self.path == "/api/logout":
@@ -159,6 +459,58 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_response(204)
             self.send_header("Set-Cookie", "hq_session=; Path=/; Max-Age=0")
             self.end_headers()
+            return
+        if self.path == "/api/workspaces":
+            session = self._require_session()
+            if not session:
+                return
+            body = self._read_json_body()
+            if body is None:
+                return
+            name = (body.get("name") or "").strip() or "Untitled Workspace"
+            workspace_id = create_workspace(name, session["user_id"])
+            self._reply(200, {"id": workspace_id, "name": name, "role": "owner"})
+            return
+        m = WORKSPACE_MEMBERS_RE.match(self.path)
+        if m:
+            session = self._require_session()
+            if not session:
+                return
+            workspace_id = int(m.group(1))
+            body = self._read_json_body()
+            if body is None:
+                return
+            email = (body.get("email") or "").strip().lower()
+            role = body.get("role") or "member"
+            if not email:
+                self._reply(400, {"error": "missing email"})
+                return
+            with get_conn() as conn, conn.cursor() as cur:
+                if workspace_role(cur, session["user_id"], workspace_id) != "owner":
+                    self._reply(403, {"error": "only the workspace owner can invite members"})
+                    return
+                cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+                existing = cur.fetchone()
+                if existing:
+                    cur.execute(
+                        """
+                        INSERT INTO workspace_members (workspace_id, user_id, role)
+                        VALUES (%s, %s, %s)
+                        ON CONFLICT (workspace_id, user_id) DO UPDATE SET role = EXCLUDED.role
+                        """,
+                        (workspace_id, existing[0], role),
+                    )
+                else:
+                    cur.execute(
+                        """
+                        INSERT INTO workspace_invites (workspace_id, email, role, invited_by)
+                        VALUES (%s, %s, %s, %s)
+                        ON CONFLICT (workspace_id, email) DO UPDATE SET role = EXCLUDED.role
+                        """,
+                        (workspace_id, email, role, session["user_id"]),
+                    )
+                conn.commit()
+            self._reply(204, None)
             return
         if self.path != "/api/route":
             self.send_error(404)
@@ -280,15 +632,27 @@ class Handler(SimpleHTTPRequestHandler):
             self._redirect("/login.html?error=" + urllib.parse.quote("token audience mismatch"))
             return
         email = (claims.get("email") or "").lower()
-        if ALLOWED_EMAILS and email not in ALLOWED_EMAILS:
-            self._redirect("/login.html?error=" + urllib.parse.quote(
-                "This Google account isn't allowed to sign in to this workspace."))
-            return
+        name = claims.get("name") or claims.get("email")
+
+        # Every account is scoped to workspace membership, not a flat allowlist:
+        # upsert the user, absorb any invite waiting for this email, and — only
+        # if they still belong to nothing — bootstrap a first workspace, but
+        # only for emails on ALLOWED_EMAILS. Anyone else with no membership and
+        # no invite is turned away (fail closed).
+        user_id = upsert_user(email, name)
+        apply_pending_invites(user_id, email)
+        if user_workspace_count(user_id) == 0:
+            if email not in ALLOWED_EMAILS:
+                self._redirect("/login.html?error=" + urllib.parse.quote(
+                    "This Google account isn't allowed to sign in to this workspace."))
+                return
+            create_workspace(f"{name.split(' ')[0]}\u2019s Workspace" if name else "My Workspace", user_id)
 
         sid = secrets.token_urlsafe(32)
         SESSIONS[sid] = {
+            "user_id": user_id,
             "email": claims.get("email"),
-            "name": claims.get("name") or claims.get("email"),
+            "name": name,
             "access_token": tokens.get("access_token"),
             "refresh_token": tokens.get("refresh_token"),
         }
@@ -305,8 +669,12 @@ class Handler(SimpleHTTPRequestHandler):
         if os.environ.get("ALLOW_DEV_LOGIN") != "1":
             self.send_error(404)
             return
+        user_id = upsert_user("dev-preview@local", "Dev Preview")
+        if user_workspace_count(user_id) == 0:
+            create_workspace("Dev Preview Workspace", user_id)
         sid = secrets.token_urlsafe(32)
         SESSIONS[sid] = {
+            "user_id": user_id,
             "email": "dev-preview@local",
             "name": "Dev Preview",
             "access_token": None,
@@ -317,12 +685,31 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Set-Cookie", f"hq_session={sid}; Path=/; HttpOnly; SameSite=Lax")
         self.end_headers()
 
+    def _require_session(self):
+        session = _session_from_cookie(self)
+        if not session:
+            self._reply(401, {"error": "not signed in"})
+            return None
+        return session
+
+    def _read_json_body(self):
+        length = int(self.headers.get("Content-Length", 0))
+        try:
+            return json.loads(self.rfile.read(length) or b"{}")
+        except json.JSONDecodeError:
+            self._reply(400, {"error": "invalid JSON body"})
+            return None
+
     def _redirect(self, location):
         self.send_response(302)
         self.send_header("Location", location)
         self.end_headers()
 
     def _reply(self, code, obj):
+        if obj is None:
+            self.send_response(code)
+            self.end_headers()
+            return
         body = json.dumps(obj).encode("utf-8")
         self.send_response(code)
         self.send_header("Content-Type", "application/json")
@@ -342,5 +729,10 @@ if __name__ == "__main__":
     if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
         print("warning: GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET are not set — sign-in "
               "will fail until you set both and restart this server.")
+    if not DATABASE_URL:
+        print("warning: DATABASE_URL is not set — sign-in and workspace data will fail "
+              "until you `export DATABASE_URL=postgres://...` and restart this server.")
+    else:
+        init_db()
     print(f"serving {os.getcwd()} on http://{HOST}:{PORT} (model: {MODEL})")
     ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
