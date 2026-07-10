@@ -740,26 +740,46 @@
      HOME: the workspace hub — a flat list of pages, same shape as the
      Notion/Sheets/Docs list view it's meant to replace. "job sheet" is a
      group (it opens the categorized job-sheet tables below); everything
-     else starts as a single blank table or doc, meant to be filled in by
-     importing what the client already tracks things in, not by us
-     pre-guessing their structure.
+     else ships with invented sample data so the product feels real out of
+     the box. Onboarding's import step is what replaces this with whatever
+     the client already tracks things in, not by us pre-guessing their
+     structure.
      ===================================================================== */
   const SEED_PAGES = [
     { key: 'job-sheet', label: 'job sheet', type: 'group' },
     { key: 'rate-sheet', label: 'rate sheet', type: 'doc', blocks: [
-      { t: 'h2', html: 'Rate Sheet (example template)' },
-      { t: 'p', html: '<strong>Overview:</strong> Replace this with your own rates during onboarding \u2014 import a doc or sheet you already have, or edit this template directly.' },
+      { t: 'h2', html: 'Rate Sheet (sample)' },
+      { t: 'p', html: '<strong>Overview:</strong> Sample pricing tiers below \u2014 replace with your own rates during onboarding by importing a doc or sheet you already have, or edit this directly.' },
       { t: 'hr' },
-      { t: 'h3', html: 'Category' },
+      { t: 'h3', html: 'Social Content' },
       { t: 'table', cols: ['Category', 'Story Post', 'Feed Post'], rows: [
-        ['<strong>Example tier</strong>', '$0', '$0']
+        ['<strong>Standard</strong>', '$400', '$900'],
+        ['<strong>Premium</strong>', '$800', '$1,800'],
+        ['<strong>Campaign</strong>', '$1,500', '$3,500']
       ] }
     ] },
-    { key: 'schedule', label: 'schedule', type: 'table', cols: ['Item', 'Status', 'Notes'], rows: [['', '', '']] },
-    { key: 'management', label: 'management', type: 'table', cols: ['Item', 'Status', 'Notes'], rows: [['', '', '']] },
-    { key: 'lead-gen', label: 'lead gen', type: 'table', cols: ['Item', 'Status', 'Notes'], rows: [['', '', '']] },
-    { key: 'yours', label: 'yours', type: 'table', cols: ['Item', 'Status', 'Notes'], rows: [['', '', '']] },
-    { key: 'expenses', label: 'expenses', type: 'table', cols: ['Item', 'Amount', 'Notes'], rows: [['', '', '']] }
+    { key: 'schedule', label: 'schedule', type: 'table', cols: ['Item', 'Status', 'Notes'], rows: [
+      ['Nova Cosmetics shoot', 'Confirmed', 'Studio B, 9am call time'],
+      ['Halcyon Denim fitting', 'Pending', 'Awaiting sample delivery'],
+      ['Meridian PR interview', 'Confirmed', 'Zoom, 2pm']
+    ] },
+    { key: 'management', label: 'management', type: 'table', cols: ['Item', 'Status', 'Notes'], rows: [
+      ['Q3 contract renewal — Wilder & Fox', 'In Progress', 'Redline sent back for review'],
+      ['New rate sheet rollout', 'Drafting', 'Target start Aug 1']
+    ] },
+    { key: 'lead-gen', label: 'lead gen', type: 'table', cols: ['Item', 'Status', 'Notes'], rows: [
+      ['Cassia Beauty — inbound DM', 'Warm', 'Wants a Q4 campaign'],
+      ['Lucent Agency intro call', 'Scheduled', 'Thu 11am']
+    ] },
+    { key: 'yours', label: 'yours', type: 'table', cols: ['Item', 'Status', 'Notes'], rows: [
+      ['Book quarterly taxes call', 'Not started', ''],
+      ['Renew studio insurance', 'In progress', 'Quote requested']
+    ] },
+    { key: 'expenses', label: 'expenses', type: 'table', cols: ['Item', 'Amount', 'Notes'], rows: [
+      ['Studio rental — Jul', '$1,200', 'Halcyon Denim shoot'],
+      ['Freelance retoucher', '$450', 'Nova Cosmetics set'],
+      ['Courier / samples', '$85', 'Bloomfield Jewelry']
+    ] }
   ];
   let pages = JSON.parse(localStorage.getItem('hq_pages') || 'null') || SEED_PAGES;
   function savePages() { localStorage.setItem('hq_pages', JSON.stringify(pages)); touchActivity(); }
@@ -986,43 +1006,70 @@
   }
 
   /* =====================================================================
-     JOB SHEET (a group page): a blank starter structure — Jobs, Products,
+     JOB SHEET (a group page): a demo starter structure — Jobs, Products,
      People, Posting, PR / Interview, Interview Series — each its own live
-     table, browsable from a sidebar. Ships empty; onboarding's import step
-     is what actually populates this from whatever the client already uses
-     (Notes app, Google Sheets, Google Docs, etc.) so Studio Aa can build the
-     real framework around their actual work, not sample data.
+     table, browsable from a sidebar. Ships with invented sample data (fake
+     clients, fake dollar amounts, fake names) so the product feels real
+     out of the box; onboarding's import step is what replaces this with
+     whatever the client actually uses (Notes app, Google Sheets, Google
+     Docs, etc.) so Studio Aa can build the real framework around their
+     actual work.
      ===================================================================== */
   const SEED_CATS = [
     {
       key: 'jobs', label: 'Jobs',
       cols: ['Client','Delivery Date','Invoice Amount','Invoice #','Job Status','Team','Paid','Payment Pipeline','Posting','Priority','Reviewed','Taxes'],
-      rows: [['', '', '', '', '', '', '', '', '', '', '', '']]
+      rows: [
+        ['Nova Cosmetics', 'Jul 14', '$7,200', 'INV-1042', 'In Progress', 'A. Reyes', 'No', 'Sent', 'Scheduled', 'High', 'Yes', 'Pending'],
+        ['Halcyon Denim', 'Jul 18', '$4,500', 'INV-1043', 'Booked', 'M. Chen', 'No', 'Not Sent', 'Draft', 'Medium', 'No', 'Pending'],
+        ['Wilder & Fox', 'Jul 22', '$9,800', 'INV-1044', 'Awaiting Approval', 'A. Reyes', 'No', 'Sent', 'Scheduled', 'High', 'Yes', 'Filed'],
+        ['Bloomfield Jewelry', 'Aug 1', '$3,100', 'INV-1045', 'Complete', 'S. Patel', 'Yes', 'Paid', 'Posted', 'Low', 'Yes', 'Filed'],
+        ['Cassia Beauty', 'Aug 6', '$6,000', 'INV-1046', 'In Progress', 'M. Chen', 'No', 'Sent', 'Draft', 'Medium', 'No', 'Pending']
+      ]
     },
     {
       key: 'jewelry', label: 'Products',
       cols: ['Object','Status','Team','Priority','Production #','Reviewed'],
-      rows: [['', '', '', '', '', '']]
+      rows: [
+        ['Gold hoop set — Bloomfield', 'In Production', 'S. Patel', 'Medium', 'PRD-201', 'Yes'],
+        ['Layered chain — Cassia', 'Sample Stage', 'A. Reyes', 'High', 'PRD-202', 'No'],
+        ['Signet ring — Wilder & Fox', 'Approved', 'M. Chen', 'Low', 'PRD-203', 'Yes'],
+        ['Charm bracelet — Nova', 'Concept', 'S. Patel', 'Medium', 'PRD-204', 'No']
+      ]
     },
     {
       key: 'people', label: 'People',
       cols: ['Person','Delivery Date','Invoice Amount','Job Log #','Job Status','Team','Payment Pipeline','Reached Out'],
-      rows: [['', '', '', '', '', '', '', '']]
+      rows: [
+        ['Jordan Ames (stylist)', 'Jul 16', '$1,200', 'LOG-301', 'Confirmed', 'A. Reyes', 'Sent', 'Yes'],
+        ['Priya Nair (photographer)', 'Jul 20', '$2,400', 'LOG-302', 'Booked', 'M. Chen', 'Not Sent', 'Yes'],
+        ['Theo Marsh (MUA)', 'Jul 25', '$900', 'LOG-303', 'Pending', 'S. Patel', 'Not Sent', 'No'],
+        ['Elena Cruz (assistant)', 'Aug 2', '$600', 'LOG-304', 'Confirmed', 'A. Reyes', 'Sent', 'Yes']
+      ]
     },
     {
       key: 'posting', label: 'Posting',
       cols: ['Name'],
-      rows: [['']]
+      rows: [['Nova Cosmetics — launch teaser'], ['Halcyon Denim — campaign drop'], ['Bloomfield Jewelry — restock'], ['Cassia Beauty — tutorial series']]
     },
     {
       key: 'pr', label: 'PR / Interview',
       cols: ['PR Company','Arrived','Delivery Date','Invoice Amount','Job Log #','Team','Payment Pipeline','Pipeline','Reviewed'],
-      rows: [['', '', '', '', '', '', '', '', '']]
+      rows: [
+        ['Meridian PR', 'Jul 10', 'Jul 19', '$2,800', 'LOG-401', 'M. Chen', 'Sent', 'In Review', 'Yes'],
+        ['Rove Comms', 'Jul 15', 'Jul 24', '$1,900', 'LOG-402', 'A. Reyes', 'Not Sent', 'Drafting', 'No'],
+        ['Lucent Agency', 'Jul 21', 'Jul 30', '$3,400', 'LOG-403', 'S. Patel', 'Sent', 'Scheduled', 'Yes']
+      ]
     },
     {
       key: 'sextalk', label: 'Interview Series',
       cols: ['Interviewee','Date','Following','Posted'],
-      rows: [['', '', '', '']]
+      rows: [
+        ['Dana Kwon', 'Jul 12', '84K', 'Yes'],
+        ['Marcus Ibe', 'Jul 19', '112K', 'No'],
+        ['Freya Solberg', 'Jul 27', '46K', 'No'],
+        ['Omar Delacroix', 'Aug 4', '203K', 'No']
+      ]
     }
   ];
   let cats = JSON.parse(localStorage.getItem('hq_categories') || 'null') || SEED_CATS;
