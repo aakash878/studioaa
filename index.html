@@ -73,6 +73,8 @@
   .home { max-width: 980px; margin: 0 auto; padding: 48px 28px 80px; }
   .home-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gray-2); margin-bottom: 6px; }
   .home-title { font-size: 23px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 3px; }
+  .home-title[contenteditable] { outline: none; cursor: text; border-radius: 5px; padding: 1px 4px; margin-left: -4px; }
+  .home-title[contenteditable]:hover, .home-title[contenteditable]:focus { background: var(--hover); }
   .home-sub { font-size: 11.5px; color: var(--gray-2); margin-bottom: 20px; }
 
   /* ---------- home dashboard grid: pages (half) + schedule/status (quarters) + priority (full width) ---------- */
@@ -153,7 +155,16 @@
     font-size: 10.5px; color: var(--gray-2); flex-shrink: 0;
   }
   .prow-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .prow-name[contenteditable] { outline: none; cursor: text; }
+  .prow-name[contenteditable]:focus { background: var(--hover); border-radius: 4px; }
   .prow-meta { font-size: 10.5px; color: var(--gray-2); font-weight: 400; flex-shrink: 0; }
+  .prow-child { padding-left: 30px; }
+  .prow-parent-hint { color: var(--gray-2); margin-right: 2px; font-size: 11px; flex-shrink: 0; }
+  .prow-connected {
+    font-size: 10px; color: var(--gray-2); flex-shrink: 0; text-decoration: underline;
+    text-underline-offset: 2px; cursor: pointer;
+  }
+  .prow-connected:hover { color: var(--ink); }
   .prow-del {
     display: none; border: none; background: none; color: var(--gray-2); cursor: pointer;
     font-size: 14px; flex-shrink: 0; line-height: 1;
@@ -181,6 +192,8 @@
   .cat:hover { background: var(--hover); color: var(--ink); }
   .cat.on { background: var(--hover); color: var(--ink); font-weight: 600; }
   .cat-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cat-name[contenteditable] { outline: none; cursor: text; }
+  .cat-name[contenteditable]:focus { color: var(--ink); }
   .cat-n { font-size: 10.5px; color: var(--gray-2); flex-shrink: 0; }
   .cat-del {
     display: none; border: none; background: none; color: var(--gray-2); cursor: pointer;
@@ -197,6 +210,8 @@
 
   main { flex: 1; min-width: 0; padding: 28px 32px 80px; }
   .page-title { font-size: 19px; font-weight: 700; letter-spacing: -0.025em; margin-bottom: 3px; }
+  .page-title[contenteditable] { outline: none; cursor: text; border-radius: 5px; padding: 1px 4px; margin-left: -4px; }
+  .page-title[contenteditable]:hover, .page-title[contenteditable]:focus { background: var(--hover); }
   .page-sub { font-size: 11.5px; color: var(--gray-2); margin-bottom: 20px; }
 
   /* ---------- the table, shared by job-sheet categories and standalone pages ---------- */
@@ -259,9 +274,14 @@
   .filter-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
   .filter-label { font-size: 10.5px; color: var(--gray-2); font-weight: 700; margin-right: 2px; }
   .filter-colpick {
-    font-size: 11px; font-weight: 700; border: 1px solid var(--line); border-radius: 7px; background: var(--surface);
-    color: var(--ink); padding: 4px 7px; cursor: pointer; max-width: 140px;
+    font-size: 11.5px; font-weight: 700; border: 1px solid var(--line); border-radius: 20px; background: var(--surface);
+    color: var(--gray-1); padding: 5px 26px 5px 12px; cursor: pointer; max-width: 160px; transition: all .12s ease;
+    appearance: none; -webkit-appearance: none; -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6' viewBox='0 0 9 6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' stroke='%238a8894' stroke-width='1.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center; background-size: 9px 6px;
   }
+  .filter-colpick:hover { border-color: var(--gray-2); color: var(--ink); }
+  .filter-colpick:focus { outline: none; border-color: var(--gray-2); }
   .filter-chip {
     font-size: 11.5px; font-weight: 700; padding: 5px 10px; border-radius: 20px; cursor: pointer;
     border: 1px solid var(--line); background: var(--surface); color: var(--gray-1); transition: all .12s ease;
@@ -351,7 +371,31 @@
   .modal-input { margin-bottom: 8px; }
   .modal-input:focus, .modal-textarea:focus { outline: none; border-color: var(--gray-1); }
   .modal-textarea { min-height: 160px; font-size: 12px; resize: vertical; line-height: 1.5; }
+  .modal-select {
+    width: 100%; font-size: 13px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px;
+    background: var(--bg); color: var(--ink); font-family: inherit; margin-bottom: 8px; cursor: pointer;
+  }
+  .modal-select:focus { outline: none; border-color: var(--gray-1); }
+  .modal-field-label { font-size: 10.5px; font-weight: 700; color: var(--gray-2); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .05em; }
   .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+
+  /* ---------- emoji quick-picker popover ---------- */
+  .emoji-pop {
+    display: none; position: absolute; z-index: 60; background: var(--surface-glass); border: 1px solid var(--line);
+    border-radius: 10px; padding: 6px; gap: 2px; box-shadow: 0 10px 30px rgba(0,0,0,.18);
+    backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%);
+  }
+  .emoji-pop.show { display: flex; }
+  .emoji-pop button {
+    font-size: 17px; line-height: 1; padding: 6px 7px; border-radius: 6px; border: none;
+    background: none; cursor: pointer; font-family: inherit;
+  }
+  .emoji-pop button:hover { background: var(--hover); }
+  .emoji-pop .emoji-pop-more {
+    font-size: 10.5px; font-weight: 700; color: var(--gray-2); padding: 6px 7px; border-radius: 6px;
+    border: none; background: none; cursor: pointer; font-family: inherit;
+  }
+  .emoji-pop .emoji-pop-more:hover { background: var(--hover); color: var(--ink); }
   .modal-btn {
     font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 7px; border: 1px solid var(--line);
     background: var(--surface); color: var(--ink); cursor: pointer; font-family: inherit;
@@ -378,7 +422,14 @@
   .sp-page:hover { background: var(--hover); }
   .sp-page .pi { font-size: 11px; flex-shrink: 0; width: 16px; text-align: center; color: var(--gray-2); }
   .sp-page-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sp-page-name[contenteditable] { outline: none; cursor: text; }
+  .sp-page-name[contenteditable]:focus { background: var(--hover); border-radius: 4px; }
   .sp-tools { display: flex; flex-direction: column; gap: 1px; }
+  .sp-tool-primary {
+    background: var(--ink); color: var(--bg); border-radius: 7px; margin-bottom: 6px; font-weight: 700;
+  }
+  .sp-tool-primary:hover { background: var(--ink); color: var(--bg); opacity: .85; }
+  .sp-tool-primary .sp-tool-i { background: var(--bg); color: var(--ink); }
   .sp-tool {
     display: flex; align-items: center; gap: 8px; padding: 6px; border-radius: 6px;
     font-size: 12px; font-weight: 600; color: var(--gray-1); cursor: pointer;
@@ -501,6 +552,7 @@
   </div>
   <div class="sp-section">
     <div class="sp-label">Pages</div>
+    <div class="sp-tool sp-tool-primary" onclick="openNewNote()"><span class="sp-tool-i">+</span>New note</div>
     <div class="sp-pages" id="sp-pages"></div>
     <div class="sp-tool" onclick="addPage()"><span class="sp-tool-i">+</span>New page</div>
   </div>
@@ -529,6 +581,33 @@
     </div>
   </div>
 </div>
+
+<div class="modal-backdrop" id="newnote-backdrop" onclick="if(event.target===this) closeNewNote()">
+  <div class="modal-card">
+    <div class="modal-title">New note</div>
+    <div class="modal-hint">Give it a name, pick where it lives, and what it should connect to &mdash; it opens immediately so you can start writing.</div>
+    <input class="modal-input" id="newnote-name" placeholder="Note name" />
+    <div class="modal-field-label">Type</div>
+    <select class="modal-select" id="newnote-type">
+      <option value="doc">Written note (doc)</option>
+      <option value="table">Table</option>
+    </select>
+    <div class="modal-field-label">Lives under</div>
+    <select class="modal-select" id="newnote-parent">
+      <option value="">Top level</option>
+    </select>
+    <div class="modal-field-label">Connected to</div>
+    <select class="modal-select" id="newnote-connected">
+      <option value="">Nothing yet</option>
+    </select>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeNewNote()">Cancel</button>
+      <button class="modal-btn primary" onclick="submitNewNote()">Create &amp; open</button>
+    </div>
+  </div>
+</div>
+
+<div class="emoji-pop" id="emoji-pop"></div>
 
 <div class="onboard-backdrop" id="onboard-backdrop">
   <div class="onboard-card">
@@ -908,15 +987,40 @@
     if (p.type === 'doc') return { icon: '\u00b6', meta: p.blocks.length + (p.blocks.length === 1 ? ' section' : ' sections') };
     return { icon: '\u25a2', meta: p.rows.length + (p.rows.length === 1 ? ' row' : ' rows') };
   }
-  function setPageEmoji(key) {
+  /* ---------- page icon: quick pick from a set of 5, or "\u2026" for a custom one ---------- */
+  const EMOJI_PRESETS = ['\ud83d\udcc4', '\ud83d\udccb', '\ud83d\uddc2\ufe0f', '\ud83d\udca1', '\ud83c\udfaf'];
+  function openEmojiPicker(key, el) {
+    const pop = document.getElementById('emoji-pop');
+    const rect = el.getBoundingClientRect();
+    pop.innerHTML = EMOJI_PRESETS.map(e => '<button onclick="pickEmoji(\'' + key + '\',\'' + e + '\')">' + e + '</button>').join('') +
+      '<button class="emoji-pop-more" onclick="pickEmojiCustom(\'' + key + '\')">\u2026</button>';
+    pop.style.top = (window.scrollY + rect.bottom + 4) + 'px';
+    pop.style.left = (window.scrollX + rect.left) + 'px';
+    pop.classList.add('show');
+  }
+  function closeEmojiPicker() { document.getElementById('emoji-pop').classList.remove('show'); }
+  function pickEmoji(key, emoji) {
     const p = pages.find(x => x.key === key);
     if (!p) return;
-    const val = prompt('Set an emoji for this page (e.g. \u262e\ufe0f):', p.emoji || '');
+    p.emoji = emoji;
+    savePages();
+    closeEmojiPicker();
+    render();
+  }
+  function pickEmojiCustom(key) {
+    const p = pages.find(x => x.key === key);
+    if (!p) return;
+    closeEmojiPicker();
+    const val = prompt('Set a custom emoji for this page:', p.emoji || '');
     if (val === null) return;
     p.emoji = val.trim();
     savePages();
     render();
   }
+  document.addEventListener('click', function (e) {
+    const pop = document.getElementById('emoji-pop');
+    if (pop.classList.contains('show') && !pop.contains(e.target) && !e.target.closest('.prow-icon')) closeEmojiPicker();
+  });
   let workspaceName = localStorage.getItem('hq_workspace_name') || 'Your Workspace';
   function saveWorkspaceName(name) {
     workspaceName = name;
@@ -1030,22 +1134,54 @@
     ).join('');
   }
 
+  function orderedPagesForDisplay() {
+    const byParent = {};
+    const roots = [];
+    pages.forEach(p => {
+      if (p.parent && pages.some(x => x.key === p.parent)) {
+        (byParent[p.parent] = byParent[p.parent] || []).push(p);
+      } else {
+        roots.push(p);
+      }
+    });
+    const out = [];
+    roots.forEach(p => { out.push(p); (byParent[p.key] || []).forEach(c => out.push(c)); });
+    return out;
+  }
+  function renamePage(key, text) {
+    const p = pages.find(x => x.key === key);
+    if (!p) return;
+    p.label = text;
+    savePages();
+    const rowEl = document.getElementById('prowname-' + key);
+    if (rowEl && rowEl.textContent !== text) rowEl.textContent = text;
+    const spEl = document.getElementById('spname-' + key);
+    if (spEl && spEl.textContent !== text) spEl.textContent = text;
+    if (view === key) {
+      const pt = document.getElementById('pt-title');
+      if (pt && pt.textContent !== text) pt.textContent = text;
+    }
+  }
   function homeHTML() {
-    const pagesListHTML = pages.map(p => {
+    const pagesListHTML = orderedPagesForDisplay().map(p => {
       const m = pageMeta(p);
-      return '<div class="prow" data-signal="' + (p.signal ? 1 : 0) + '" onclick="openPage(\'' + p.key + '\')">' +
+      const connected = p.connectedTo ? pages.find(x => x.key === p.connectedTo) : null;
+      return '<div class="prow' + (p.parent ? ' prow-child' : '') + '" data-signal="' + (p.signal ? 1 : 0) + '" onclick="openPage(\'' + p.key + '\')">' +
         '<span class="prow-star' + (p.signal ? ' on' : '') + '" onclick="event.stopPropagation(); toggleSignal(\'' + p.key + '\')" title="Mark as signal">' + (p.signal ? '\u2605' : '\u2606') + '</span>' +
-        '<span class="prow-icon" onclick="event.stopPropagation(); setPageEmoji(\'' + p.key + '\')" title="Click to change icon">' + m.icon + '</span>' +
-        '<span class="prow-name">' + esc(p.label) + '</span>' +
+        (p.parent ? '<span class="prow-parent-hint">\u21b3</span>' : '') +
+        '<span class="prow-icon" onclick="event.stopPropagation(); openEmojiPicker(\'' + p.key + '\', this)" title="Click to change icon">' + m.icon + '</span>' +
+        '<span class="prow-name" id="prowname-' + p.key + '" contenteditable spellcheck="false" onclick="event.stopPropagation()" oninput="renamePage(\'' + p.key + '\', this.textContent)">' + esc(p.label) + '</span>' +
+        (connected ? '<span class="prow-connected" onclick="event.stopPropagation(); openPage(\'' + connected.key + '\')" title="Connected page">\u2192 ' + esc(connected.label) + '</span>' : '') +
         '<span class="prow-meta">' + m.meta + '</span>' +
         '<button class="prow-del" onclick="event.stopPropagation(); delPage(\'' + p.key + '\')" title="Delete">\u00d7</button>' +
         '</div>';
     }).join('') +
+      '<div class="prow-add" onclick="openNewNote()">+ New note</div>' +
       '<div class="prow-add" onclick="addPage()">+ New page</div>' +
       '<div class="prow-add" onclick="openImport()">+ Import notes, doc, or sheet</div>';
     return '<div class="home">' +
       '<div class="home-eyebrow">Workspace</div>' +
-      '<div class="home-title">' + esc(workspaceName) + '</div>' +
+      '<div class="home-title" contenteditable spellcheck="false" oninput="saveWorkspaceName(this.textContent)">' + esc(workspaceName) + '</div>' +
       '<div class="home-sub">' + pages.length + ' pages</div>' +
       '<div class="home-freshness">&#9679; ' + timeAgo() + '</div>' +
       '<div class="home-grid">' +
@@ -1068,7 +1204,7 @@
       const m = pageMeta(p);
       return '<div class="sp-page" onclick="openPage(\'' + p.key + '\')">' +
         '<span class="pi">' + m.icon + '</span>' +
-        '<span class="sp-page-name">' + esc(p.label) + '</span>' +
+        '<span class="sp-page-name" id="spname-' + p.key + '" contenteditable spellcheck="false" onclick="event.stopPropagation()" oninput="renamePage(\'' + p.key + '\', this.textContent)">' + esc(p.label) + '</span>' +
         '</div>';
     }).join('');
   }
@@ -1335,7 +1471,7 @@
 
   function jobSheetShellHTML() {
     return '<div class="shell"><nav id="nav"></nav><main>' +
-      '<div class="page-title" id="page-title"></div><div class="page-sub" id="page-sub"></div>' +
+      '<div class="page-title" id="page-title" contenteditable spellcheck="false" oninput="renameCat(activeKey, this.textContent)"></div><div class="page-sub" id="page-sub"></div>' +
       '<div id="filter-bar-slot"></div>' +
       '<div class="table-wrap"><table id="tbl"><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>' +
       '<div class="add-row" onclick="addRow()">+ New</div>' +
@@ -1344,11 +1480,23 @@
   function renderNav() {
     document.getElementById('nav').innerHTML =
       cats.map(c => '<div class="cat' + (c.key === activeKey ? ' on' : '') + '" onclick="setActive(\'' + c.key + '\')">' +
-        '<span class="cat-name">' + esc(c.label) + '</span>' +
+        '<span class="cat-name" id="catname-' + c.key + '" contenteditable spellcheck="false" onclick="event.stopPropagation()" oninput="renameCat(\'' + c.key + '\', this.textContent)">' + esc(c.label) + '</span>' +
         '<span class="cat-n">' + c.rows.length + '</span>' +
         '<button class="cat-del" onclick="event.stopPropagation(); delCat(\'' + c.key + '\')" title="Delete">\u00d7</button>' +
         '</div>').join('') +
       '<div class="cat-add" onclick="addCat()">+ New category</div>';
+  }
+  function renameCat(key, text) {
+    const c = cats.find(x => x.key === key);
+    if (!c) return;
+    c.label = text;
+    saveCats();
+    const navEl = document.getElementById('catname-' + key);
+    if (navEl && navEl.textContent !== text) navEl.textContent = text;
+    if (key === activeKey) {
+      const pt = document.getElementById('page-title');
+      if (pt && pt.textContent !== text) pt.textContent = text;
+    }
   }
   function addCat() {
     const label = prompt('What\u2019s the new category called?');
@@ -1535,7 +1683,7 @@
      ===================================================================== */
   function pageTableShellHTML() {
     return '<main style="padding:28px 32px 80px;">' +
-      '<div class="page-title" id="pt-title"></div><div class="page-sub" id="pt-sub"></div>' +
+      '<div class="page-title" id="pt-title" contenteditable spellcheck="false" oninput="renamePage(view, this.textContent)"></div><div class="page-sub" id="pt-sub"></div>' +
       '<div id="pt-filter-bar-slot"></div>' +
       '<div class="table-wrap"><table id="pt-tbl"><thead id="pt-thead"></thead><tbody id="pt-tbody"></tbody></table></div>' +
       '<div class="add-row" onclick="ptAddRow()">+ New</div>' +
@@ -1687,11 +1835,20 @@
   /* =====================================================================
      BLOCK PALETTE: the side-panel "Blocks" section is the slash-command
      menu, just always visible on hover instead of typed inline. Clicking
-     an item appends that block type to the current doc page.
+     an item appends that block type to the current doc page \u2014 if you're
+     not already on one, it immediately spins up a fresh note and drops you
+     into it, like starting from a blank slash command.
      ===================================================================== */
   function insertBlock(kind) {
-    const p = curPage();
-    if (!p || p.type !== 'doc') { alert('Open a doc page first, then use Blocks to add to it.'); return; }
+    const wasOnDoc = curPage() && curPage().type === 'doc';
+    let p = curPage();
+    if (!wasOnDoc) {
+      const key = 'untitled-' + Date.now().toString(36).slice(-5);
+      p = { key: key, label: 'Untitled note', type: 'doc', blocks: [] };
+      pages.push(p);
+      view = key;
+      localStorage.setItem('hq_view', key);
+    }
     if (kind === 'h2') p.blocks.push({ t: 'h2', html: 'New heading' });
     else if (kind === 'h3') p.blocks.push({ t: 'h3', html: 'New subheading' });
     else if (kind === 'p') p.blocks.push({ t: 'p', html: 'Type something\u2026' });
@@ -1699,7 +1856,42 @@
     else if (kind === 'toggle') p.blocks.push({ t: 'toggle', html: 'Toggle', open: true, items: [{ html: 'New line' }] });
     else if (kind === 'table') p.blocks.push({ t: 'table', cols: ['Col 1', 'Col 2'], rows: [['', '']] });
     savePages();
+    if (!wasOnDoc) { render(); return; }
     renderDoc();
+  }
+
+  /* =====================================================================
+     NEW NOTE: a more deliberate way to start a page than the bare "+ New
+     page" prompt \u2014 pick a type, where it lives (nested under an existing
+     page on the home list), and what it's connected to (shown as a quick
+     link on both pages' rows). Opens straight into the new note on create.
+     ===================================================================== */
+  function openNewNote() {
+    const opts = pages.filter(p => p.type !== 'group')
+      .map(p => '<option value="' + p.key + '">' + esc(p.label) + '</option>').join('');
+    document.getElementById('newnote-parent').innerHTML = '<option value="">Top level</option>' + opts;
+    document.getElementById('newnote-connected').innerHTML = '<option value="">Nothing yet</option>' + opts;
+    document.getElementById('newnote-name').value = '';
+    document.getElementById('newnote-type').value = 'doc';
+    document.getElementById('newnote-backdrop').classList.add('show');
+    setTimeout(() => document.getElementById('newnote-name').focus(), 0);
+  }
+  function closeNewNote() { document.getElementById('newnote-backdrop').classList.remove('show'); }
+  function submitNewNote() {
+    const nameEl = document.getElementById('newnote-name');
+    const name = nameEl.value.trim();
+    if (!name) { nameEl.focus(); return; }
+    const type = document.getElementById('newnote-type').value;
+    const parent = document.getElementById('newnote-parent').value || null;
+    const connectedTo = document.getElementById('newnote-connected').value || null;
+    const key = name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now().toString(36).slice(-4);
+    const page = type === 'doc'
+      ? { key: key, label: name, type: 'doc', parent: parent, connectedTo: connectedTo, blocks: [{ t: 'h2', html: name }] }
+      : { key: key, label: name, type: 'table', parent: parent, connectedTo: connectedTo, cols: ['Item', 'Status', 'Notes'], rows: [['', '', '']] };
+    pages.push(page);
+    savePages();
+    closeNewNote();
+    openPage(key);
   }
 
   /* ---------- the router ---------- */
