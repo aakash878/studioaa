@@ -44,6 +44,7 @@
     padding: 18px 28px; border-bottom: 1px solid var(--line);
   }
   .hdr-left { display: flex; align-items: baseline; gap: 6px; cursor: default; }
+  .hdr-right { display: flex; align-items: center; gap: 10px; }
   .hdr-word { font-size: 13.5px; font-weight: 700; letter-spacing: -0.02em; cursor: pointer; }
   .hdr-word:hover { color: var(--gray-1); }
   .hdr-ws-toggle { position: relative; display: inline-flex; align-items: baseline; margin-left: 4px; }
@@ -584,6 +585,10 @@
       <div class="hdr-ws-pop" id="hdr-ws-pop"></div>
     </span>
     <span id="crumb"></span>
+  </div>
+  <div class="hdr-right">
+    <span class="who" id="hdr-who"></span>
+    <button class="signout" id="hdr-signout-btn" onclick="signOut()" style="display:none;">sign out</button>
   </div>
 </header>
 
@@ -2236,6 +2241,8 @@
       if (!me) { render(); return; } // not signed in; server already redirects index.html -> login.html
       document.getElementById('who').textContent = me.name || me.email || '';
       document.getElementById('signout-btn').style.display = '';
+      document.getElementById('hdr-who').textContent = me.name || me.email || '';
+      document.getElementById('hdr-signout-btn').style.display = '';
       return fetch('/api/workspaces').then(r => r.json()).then(workspaces => {
         knownWorkspaces = workspaces;
         renderWorkspaceSwitcher(workspaces);
