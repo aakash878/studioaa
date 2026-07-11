@@ -117,6 +117,8 @@
     font-family: inherit; padding: 0; text-decoration: underline; text-underline-offset: 2px;
   }
   .signout:hover { color: var(--ink); }
+  .sp-footer { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--line-soft); }
+  .sp-footer .signout { font-size: 9.5px; }
   .toggle {
     width: 34px; height: 20px; border-radius: 20px; background: var(--line);
     position: relative; cursor: pointer; border: none; padding: 0; flex-shrink: 0;
@@ -237,19 +239,12 @@
   .prow.drop-target, .sp-page.drop-target {
     box-shadow: inset 0 0 0 1.5px rgba(196,201,209,.9); background: rgba(196,201,209,.14); border-radius: 6px;
   }
-  .prow-star {
-    font-size: 10.5px; color: var(--line); cursor: pointer; flex-shrink: 0; width: 12px;
-    text-align: center; transition: color .12s ease;
-  }
-  .prow-star.on { color: #9ea6b3; text-shadow: 0 0 8px rgba(158,166,179,.7); }
-  .prow:hover .prow-star { color: var(--gray-2); }
-  .prow:hover .prow-star.on { color: #9ea6b3; }
+  .prow-collapse-spacer { width: 12px; flex-shrink: 0; }
   .prow-name { flex: 0 1 auto; max-width: 70%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .prow-name[contenteditable] { outline: none; cursor: text; }
   .prow-name[contenteditable]:focus { background: var(--hover); border-radius: 4px; }
   .prow-spacer { flex: 1; }
   .prow-child { padding-left: 30px; }
-  .prow-parent-hint { color: var(--gray-2); margin-right: 2px; font-size: 11px; flex-shrink: 0; }
   .prow-pin-badge {
     font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
     color: var(--gray-2); flex-shrink: 0; padding: 2px 6px; border-radius: 20px; border: 1px solid var(--line);
@@ -514,6 +509,7 @@
     padding: 22px 18px; overflow-y: auto; transform: translateX(100%);
     transition: transform .22s cubic-bezier(.3,1,.4,1);
     backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%);
+    display: flex; flex-direction: column;
   }
   .sp-wrap:hover .side-panel, body.sp-pinned .side-panel { transform: translateX(0); }
   header, #app { transition: margin-right .22s cubic-bezier(.3,1,.4,1); }
@@ -718,7 +714,6 @@
       <span class="who" id="hdr-who"></span>
       <span class="hdr-freshness" id="hdr-freshness"></span>
     </span>
-    <button class="signout" id="hdr-signout-btn" onclick="signOut()" style="display:none;">sign out</button>
   </div>
 </header>
 
@@ -747,13 +742,6 @@
     </div>
   </div>
   <div class="sp-section">
-    <div class="sp-label">Account</div>
-    <div class="sp-row">
-      <span class="who" id="who"></span>
-      <button class="signout" id="signout-btn" onclick="signOut()" style="display:none;">sign out</button>
-    </div>
-  </div>
-  <div class="sp-section">
     <div class="sp-row">
       <div class="sp-label" style="margin-bottom:0;">Workspace</div>
       <button class="signout" id="members-btn" onclick="openMembers()" style="display:none;">members</button>
@@ -775,6 +763,12 @@
       <div class="sp-tool" onclick="insertBlock('ul')"><span class="sp-tool-i">&bull;</span>Bulleted list</div>
       <div class="sp-tool" onclick="insertBlock('toggle')"><span class="sp-tool-i">&rsaquo;</span>Toggle list</div>
       <div class="sp-tool" onclick="insertBlock('table')"><span class="sp-tool-i">&#9638;</span>Table</div>
+    </div>
+  </div>
+  <div class="sp-section sp-footer">
+    <div class="sp-row">
+      <span class="who" id="who"></span>
+      <button class="signout" id="signout-btn" onclick="signOut()" style="display:none;">sign out</button>
     </div>
   </div>
 </aside>
@@ -1554,6 +1548,13 @@
         roots.push(p);
       }
     });
+    // pages pinned to the home dashboard surface first, so they're easy to
+    // find at a glance from the pages tab too
+    roots.sort((a, b) => {
+      const ap = pinnedWidgets.some(w => w.sourceKey === a.key) ? 0 : 1;
+      const bp = pinnedWidgets.some(w => w.sourceKey === b.key) ? 0 : 1;
+      return ap - bp;
+    });
     const out = [];
     roots.forEach(p => {
       const children = byParent[p.key] || [];
@@ -1633,8 +1634,7 @@
       return '<div class="prow' + (entry.isChild ? ' prow-child' : '') + (hideAsChild ? ' collapsed-child' : '') + '" data-signal="' + (p.signal ? 1 : 0) + '" draggable="true"' +
         ' ondragstart="pageDragStart(event, \'' + p.key + '\')" ondragover="pageDragOver(event, \'' + p.key + '\')" ondragleave="pageDragLeave(event)" ondrop="pageDrop(event, \'' + p.key + '\')" ondragend="pageDragEnd(event)"' +
         ' onclick="openPage(\'' + p.key + '\')">' +
-        '<span class="prow-star' + (p.signal ? ' on' : '') + '" onclick="event.stopPropagation(); toggleSignal(\'' + p.key + '\')" title="Mark as signal">' + (p.signal ? '\u2605' : '\u2606') + '</span>' +
-        (entry.hasChildren ? '<span class="prow-collapse' + (collapsed ? '' : ' open') + '" onclick="event.stopPropagation(); toggleCollapse(\'' + p.key + '\')" title="Show/hide subpages">\u25b6</span>' : (entry.isChild ? '<span class="prow-parent-hint">\u21b3</span>' : '')) +
+        (entry.hasChildren ? '<span class="prow-collapse' + (collapsed ? '' : ' open') + '" onclick="event.stopPropagation(); toggleCollapse(\'' + p.key + '\')" title="Show/hide subpages">\u25b6</span>' : '<span class="prow-collapse-spacer"></span>') +
         '<span class="prow-name" id="prowname-' + p.key + '" contenteditable spellcheck="false" onclick="event.stopPropagation()" onkeydown="return blurOnEnter(event)" oninput="renamePage(\'' + p.key + '\', this.textContent)">' + esc(p.label) + '</span>' +
         '<span class="prow-spacer"></span>' +
         (pinned
@@ -2674,7 +2674,6 @@
       document.getElementById('who').textContent = me.name || me.email || '';
       document.getElementById('signout-btn').style.display = '';
       document.getElementById('hdr-who').textContent = me.name || me.email || '';
-      document.getElementById('hdr-signout-btn').style.display = '';
       return fetch('/api/workspaces').then(r => r.json()).then(workspaces => {
         knownWorkspaces = workspaces;
         renderWorkspaceSwitcher(workspaces);
