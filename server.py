@@ -11,6 +11,8 @@ and adds:
                          verify it, and start a session.
   - GET  /api/me         who's currently signed in (or 401).
   - POST /api/logout     clears the session.
+  - GET  /api/calendar/upcoming  next 7 days of the signed-in user's primary
+                                 Google Calendar (live, via calendar.readonly).
   - GET  /api/workspaces                       workspaces the signed-in user belongs to.
   - POST /api/workspaces                       create a new workspace (caller becomes owner).
   - PATCH /api/workspaces/<id>                 rename a workspace (owner-only).
@@ -55,6 +57,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timedelta, timezone
 from http.cookies import SimpleCookie
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 
@@ -108,8 +111,13 @@ PORT = int(os.environ.get("PORT", 8080))
 HOST = os.environ.get("HOST", "0.0.0.0")
 REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", f"http://127.0.0.1:{PORT}/oauth/callback")
 # openid/email/profile identify who signed in; gmail.readonly is the scope
-# you'll need once the app actually reads mail, not just logs you in.
-GOOGLE_SCOPES = "openid email profile https://www.googleapis.com/auth/gmail.readonly"
+# you'll need once the app actually reads mail, not just logs you in;
+# calendar.readonly powers the live "this week" home widget.
+GOOGLE_SCOPES = (
+    "openid email profile "
+    "https://www.googleapis.com/auth/gmail.readonly "
+    "https://www.googleapis.com/auth/calendar.readonly"
+)
 # Bootstrap allowlist: an email here with zero workspaces gets a brand-new
 # workspace on first sign-in. Anyone else needs an existing membership or a
 # pending invite (see _oauth_callback). Comma-separated, case-insensitive.
@@ -238,12 +246,88 @@ def workspace_role(cur, user_id, workspace_id):
     return row[0] if row else None
 
 
-SESSIONS = {}       # session id -> { user_id, email, name, access_token, refresh_token }
+SESSIONS = {}       # session id -> { user_id, email, name, access_token, refresh_token, token_expiry }
 PENDING_STATES = {}  # oauth "state" csrf token -> issued_at, so callback can't be spoofed
 WORKSPACE_RE = re.compile(r"^/api/workspaces/(\d+)$")
 WORKSPACE_DATA_RE = re.compile(r"^/api/workspaces/(\d+)/data$")
 WORKSPACE_MEMBERS_RE = re.compile(r"^/api/workspaces/(\d+)/members$")
 WORKSPACE_MEMBER_RE = re.compile(r"^/api/workspaces/(\d+)/members/([^/]+)$")
+
+
+def _refresh_access_token(session):
+    """Mint a fresh access_token from the stored refresh_token. Mutates
+    session in place and returns True on success, False if we can't refresh
+    (no refresh_token on file, or Google rejected it — e.g. revoked access)."""
+    refresh_token = session.get("refresh_token")
+    if not refresh_token:
+        return False
+    req = urllib.request.Request(
+        "https://oauth2.googleapis.com/token",
+        data=urllib.parse.urlencode({
+            "client_id": GOOGLE_CLIENT_ID,
+            "client_secret": GOOGLE_CLIENT_SECRET,
+            "refresh_token": refresh_token,
+            "grant_type": "refresh_token",
+        }).encode("utf-8"),
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            tokens = json.loads(resp.read())
+    except urllib.error.HTTPError:
+        return False
+    except urllib.error.URLError:
+        return False
+    session["access_token"] = tokens.get("access_token")
+    session["token_expiry"] = time.time() + int(tokens.get("expires_in", 3600))
+    return True
+
+
+def _fetch_calendar_events(session):
+    """Returns (connected: bool, reauth_required: bool, events: list). Refreshes
+    the access token first if it's missing or about to expire."""
+    if not session.get("access_token") or not session.get("refresh_token"):
+        return False, True, []
+    if not session.get("token_expiry") or time.time() > session["token_expiry"] - 60:
+        if not _refresh_access_token(session):
+            return False, True, []
+
+    now = datetime.now(timezone.utc)
+    time_min = now.isoformat()
+    time_max = (now + timedelta(days=7)).isoformat()
+    params = {
+        "timeMin": time_min,
+        "timeMax": time_max,
+        "singleEvents": "true",
+        "orderBy": "startTime",
+        "maxResults": "20",
+    }
+    url = "https://www.googleapis.com/calendar/v3/calendars/primary/events?" + urllib.parse.urlencode(params)
+    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {session['access_token']}"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            data = json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        if e.code in (401, 403):
+            return False, True, []
+        return False, False, []
+    except urllib.error.URLError:
+        return False, False, []
+
+    events = []
+    for item in data.get("items", []):
+        start = item.get("start", {})
+        end = item.get("end", {})
+        all_day = "date" in start
+        events.append({
+            "id": item.get("id"),
+            "summary": item.get("summary") or "(untitled event)",
+            "start": start.get("date") if all_day else start.get("dateTime"),
+            "end": end.get("date") if all_day else end.get("dateTime"),
+            "allDay": all_day,
+            "location": item.get("location"),
+        })
+    return True, False, events
 
 
 def _session_from_cookie(handler):
@@ -292,6 +376,17 @@ class Handler(SimpleHTTPRequestHandler):
                 )
                 rows = cur.fetchall()
             self._reply(200, [{"id": r[0], "name": r[1], "role": r[2]} for r in rows])
+            return
+        if path == "/api/calendar/upcoming":
+            session = self._require_session()
+            if not session:
+                return
+            connected, reauth_required, events = _fetch_calendar_events(session)
+            self._reply(200, {
+                "connected": connected,
+                "reauth_required": reauth_required,
+                "events": events,
+            })
             return
         m = WORKSPACE_DATA_RE.match(path)
         if m:
@@ -661,6 +756,7 @@ class Handler(SimpleHTTPRequestHandler):
             "name": name,
             "access_token": tokens.get("access_token"),
             "refresh_token": tokens.get("refresh_token"),
+            "token_expiry": time.time() + int(tokens.get("expires_in", 3600)),
         }
         self.send_response(302)
         self.send_header("Location", "/index.html")
@@ -685,6 +781,7 @@ class Handler(SimpleHTTPRequestHandler):
             "name": "Dev Preview",
             "access_token": None,
             "refresh_token": None,
+            "token_expiry": None,
         }
         self.send_response(302)
         self.send_header("Location", "/index.html")
