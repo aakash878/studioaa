@@ -19,6 +19,9 @@ and adds:
   - GET  /PUT /api/workspaces/<id>/data         read/write a workspace's pages+categories+widgets.
   - GET  /POST /api/workspaces/<id>/members     list / invite members (owner-only).
   - DELETE /api/workspaces/<id>/members/<email> remove a member or pending invite (owner-only).
+  - POST /api/workspaces/<id>/files             upload a file (base64 JSON body, 8MB cap); returns {id, filename, size}.
+  - GET  /api/files/<id>                        download a previously uploaded file (workspace members only).
+  - DELETE /api/files/<id>                      delete an uploaded file (workspace members only).
 index.html/login.html gate on that session: visiting index.html while signed
 out bounces you to login.html, and vice versa.
 
@@ -49,6 +52,7 @@ Uses the Python standard library for HTTP (http.server for routing,
 urllib.request for outbound calls to the Claude and Google APIs,
 http.cookies for the session cookie) plus psycopg2 for Postgres.
 """
+import base64
 import json
 import os
 import re
@@ -194,6 +198,16 @@ def init_db():
                 created_at TIMESTAMPTZ NOT NULL DEFAULT now()
             );
             CREATE INDEX IF NOT EXISTS page_shares_email_idx ON page_shares(email);
+            CREATE TABLE IF NOT EXISTS files (
+                id SERIAL PRIMARY KEY,
+                workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+                filename TEXT NOT NULL,
+                content_type TEXT,
+                size INTEGER NOT NULL,
+                data BYTEA NOT NULL,
+                uploaded_by INTEGER REFERENCES users(id),
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+            );
         """)
         conn.commit()
 
@@ -364,6 +378,9 @@ PAGE_SHARES_RE = re.compile(r"^/api/workspaces/(\d+)/pages/([^/]+)/shares$")
 PAGE_SHARE_RE = re.compile(r"^/api/workspaces/(\d+)/pages/([^/]+)/shares/(\d+)$")
 SHARED_PAGE_RE = re.compile(r"^/api/workspaces/(\d+)/pages/([^/]+)/view$")
 SHARED_TOKEN_RE = re.compile(r"^/api/shared/([A-Za-z0-9_-]+)$")
+FILES_RE = re.compile(r"^/api/workspaces/(\d+)/files$")
+FILE_RE = re.compile(r"^/api/files/(\d+)$")
+MAX_FILE_BYTES = 8 * 1024 * 1024  # 8MB per upload
 
 
 def _refresh_access_token(session):
@@ -556,6 +573,29 @@ class Handler(SimpleHTTPRequestHandler):
                 invites = [{"email": r[0], "role": r[1]} for r in cur.fetchall()]
             self._reply(200, {"members": members, "invites": invites})
             return
+        m = FILE_RE.match(path)
+        if m:
+            session = self._require_session()
+            if not session:
+                return
+            file_id = int(m.group(1))
+            with get_conn() as conn, conn.cursor() as cur:
+                cur.execute(
+                    "SELECT workspace_id, filename, content_type, data FROM files WHERE id = %s",
+                    (file_id,),
+                )
+                row = cur.fetchone()
+                if not row or not workspace_role(cur, session["user_id"], row[0]):
+                    self.send_error(404)
+                    return
+            _, filename, content_type, data = row
+            self.send_response(200)
+            self.send_header("Content-Type", content_type or "application/octet-stream")
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Content-Disposition", "attachment; filename=\"" + filename.replace('"', "") + "\"")
+            self.end_headers()
+            self.wfile.write(bytes(data))
+            return
         if path in ("/", "/index.html") and not _session_from_cookie(self):
             self._redirect("/login.html")
             return
@@ -626,6 +666,22 @@ class Handler(SimpleHTTPRequestHandler):
     def do_DELETE(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
+        m = FILE_RE.match(path)
+        if m:
+            session = self._require_session()
+            if not session:
+                return
+            file_id = int(m.group(1))
+            with get_conn() as conn, conn.cursor() as cur:
+                cur.execute("SELECT workspace_id FROM files WHERE id = %s", (file_id,))
+                row = cur.fetchone()
+                if not row or not workspace_role(cur, session["user_id"], row[0]):
+                    self.send_error(404)
+                    return
+                cur.execute("DELETE FROM files WHERE id = %s", (file_id,))
+                conn.commit()
+            self._reply(204, None)
+            return
         m = WORKSPACE_MEMBER_RE.match(path)
         if not m:
             self.send_error(404)
@@ -733,6 +789,41 @@ class Handler(SimpleHTTPRequestHandler):
                     )
                 conn.commit()
             self._reply(204, None)
+            return
+        m = FILES_RE.match(self.path)
+        if m:
+            session = self._require_session()
+            if not session:
+                return
+            workspace_id = int(m.group(1))
+            body = self._read_json_body()
+            if body is None:
+                return
+            filename = (body.get("filename") or "upload").strip()
+            content_type = body.get("contentType") or "application/octet-stream"
+            data_b64 = body.get("dataBase64") or ""
+            try:
+                data = base64.b64decode(data_b64)
+            except Exception:
+                self._reply(400, {"error": "invalid file data"})
+                return
+            if len(data) > MAX_FILE_BYTES:
+                self._reply(413, {"error": "file too large (max 8MB)"})
+                return
+            with get_conn() as conn, conn.cursor() as cur:
+                if not workspace_role(cur, session["user_id"], workspace_id):
+                    self._reply(403, {"error": "not a member of this workspace"})
+                    return
+                cur.execute(
+                    """
+                    INSERT INTO files (workspace_id, filename, content_type, size, data, uploaded_by)
+                    VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
+                    """,
+                    (workspace_id, filename, content_type, len(data), psycopg2.Binary(data), session["user_id"]),
+                )
+                file_id = cur.fetchone()[0]
+                conn.commit()
+            self._reply(200, {"id": file_id, "filename": filename, "size": len(data)})
             return
         if self.path != "/api/route":
             self.send_error(404)
