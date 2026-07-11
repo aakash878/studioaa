@@ -467,6 +467,28 @@
   .modal-title { font-size: 15px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 6px; }
   .modal-hint { font-size: 11.5px; color: var(--gray-2); line-height: 1.5; margin-bottom: 14px; }
 
+  /* ---------- page preview overlay: double-clicking a pinned home widget opens
+     its source page almost-full-screen without leaving the dashboard underneath
+     (single click stays on home; closing just drops the overlay, no navigation) ---------- */
+  .page-preview-backdrop {
+    display: none; position: fixed; inset: 0; background: rgba(20,19,24,.45);
+    align-items: center; justify-content: center; z-index: 55; padding: 4vh 3vw;
+  }
+  .page-preview-backdrop.show { display: flex; }
+  .page-preview-card {
+    position: relative; width: 100%; height: 100%; max-width: 1100px;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 18px;
+    box-shadow: 0 24px 70px rgba(0,0,0,.3); overflow-y: auto;
+  }
+  .page-preview-close {
+    position: sticky; top: 14px; float: right; margin-right: 14px;
+    width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line);
+    background: var(--surface); color: var(--ink); font-size: 16px; line-height: 1;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 2;
+  }
+  .page-preview-close:hover { background: var(--hover); }
+  .page-preview-body { clear: both; }
+
   /* ---------- toast: brief bottom-corner confirmation with an Undo action,
      backs the \u2318Z undo history for destructive edits ---------- */
   .toast {
@@ -843,7 +865,12 @@
   </div>
 </div>
 
-
+<div class="page-preview-backdrop" id="page-preview-backdrop" onclick="if(event.target===this) closePagePreview()">
+  <div class="page-preview-card">
+    <button class="page-preview-close" onclick="closePagePreview()" title="Close">&times;</button>
+    <div class="page-preview-body" id="page-preview-body"></div>
+  </div>
+</div>
 
 <div class="onboard-backdrop" id="onboard-backdrop">
   <div class="onboard-card">
@@ -2414,6 +2441,36 @@
     openPage(key);
   }
 
+  /* ---------- page preview overlay: double-click a pinned home widget to
+     open its source page almost-full-screen, without navigating away from
+     the dashboard underneath. Reuses the exact same shell/render functions
+     as a real page view (docShellHTML/renderDoc, pageTableShellHTML/
+     renderPageTable) by temporarily pointing `view` at the source page and
+     rendering into the overlay's container instead of #app \u2014 all editing
+     (titles, cells, blocks) works exactly as it does on the full page. ---------- */
+  let previewPrevView = null;
+  function openPagePreview(key) {
+    const p = pages.find(x => x.key === key);
+    if (!p) return;
+    previewPrevView = view;
+    view = key;
+    const body = document.getElementById('page-preview-body');
+    if (p.type === 'doc') {
+      body.innerHTML = docShellHTML();
+      renderDoc();
+    } else {
+      body.innerHTML = pageTableShellHTML();
+      renderPageTable();
+    }
+    document.getElementById('page-preview-backdrop').classList.add('show');
+  }
+  function closePagePreview() {
+    document.getElementById('page-preview-backdrop').classList.remove('show');
+    document.getElementById('page-preview-body').innerHTML = '';
+    view = previewPrevView || 'home';
+    render();
+  }
+
   /* ---------- the router ---------- */
   function render() {
     renderCrumb();
@@ -2525,12 +2582,12 @@
         w.type === 'visual' ? pinnedVisualHTML(src) :
         w.type === 'timeline' ? pinnedTimelineHTML(src) : pinnedSheetHTML(src);
       return '<div class="widget-card hg-pinned' + (src ? ' hg-clickable' : '') + '"' +
-        (src ? ' onclick="openPage(\'' + src.key + '\')" title="Open ' + esc(src.label) + '"' : '') + '>' +
-        '<div class="pin-actions">' +
+        (src ? ' ondblclick="openPagePreview(\'' + src.key + '\')" title="Double-click to open ' + esc(src.label) + '"' : '') + '>' +
+        '<div class="pin-actions" ondblclick="event.stopPropagation()">' +
         '<button class="pin-change" onclick="event.stopPropagation(); openPinModalForWidget(\'' + w.id + '\')" title="Change this widget\'s view">Change view</button>' +
         '<button class="pin-unpin" onclick="event.stopPropagation(); unpinWidget(\'' + w.id + '\')" title="Unpin from home">Unpin</button>' +
         '</div>' +
-        '<div class="widget-title" contenteditable spellcheck="false" onclick="event.stopPropagation()" onkeydown="return blurOnEnter(event)" oninput="renamePinnedWidget(\'' + w.id + '\', this.textContent)">' + esc(w.label) + '</div>' +
+        '<div class="widget-title" contenteditable spellcheck="false" onclick="event.stopPropagation()" ondblclick="event.stopPropagation()" onkeydown="return blurOnEnter(event)" oninput="renamePinnedWidget(\'' + w.id + '\', this.textContent)">' + esc(w.label) + '</div>' +
         '<div class="widget-sub">' + (src ? esc(src.label) : 'Missing page') + '</div>' +
         body + '</div>';
     }).join('');
