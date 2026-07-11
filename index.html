@@ -48,6 +48,22 @@
     box-shadow: 0 2px 24px rgba(140,120,255,.08), 0 0 0 1px rgba(255,255,255,.4) inset;
   }
   body.prism header { background: linear-gradient(90deg, rgba(255,120,150,.05), rgba(120,170,255,.05), rgba(255,220,120,.05)); }
+  /* ---------- light theme hue accents (blue / green / orange / white) ---------- */
+  body.hue-blue {
+    --bg: #f2f6fc; --surface: #ffffff;
+    --surface-glass: rgba(240,247,255,.72); --surface-glass-lite: rgba(240,247,255,.34);
+  }
+  body.hue-green {
+    --bg: #f2f8f3; --surface: #ffffff;
+    --surface-glass: rgba(240,252,242,.72); --surface-glass-lite: rgba(240,252,242,.34);
+  }
+  body.hue-orange {
+    --bg: #fdf6ef; --surface: #ffffff;
+    --surface-glass: rgba(255,247,238,.72); --surface-glass-lite: rgba(255,247,238,.34);
+  }
+  body.hue-blue .bg-weather span:nth-child(1) { background: #b8d3ff; }
+  body.hue-green .bg-weather span:nth-child(1) { background: #bce6c6; }
+  body.hue-orange .bg-weather span:nth-child(1) { background: #ffd3ab; }
   * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
   html { -webkit-font-smoothing: antialiased; background: var(--bg); }
   body {
@@ -118,11 +134,11 @@
 
   /* ---------- home: a clean, compact list of pages ---------- */
   .home { max-width: 980px; margin: 0 auto; padding: 48px 28px 80px; }
-  .home-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gray-2); margin-bottom: 6px; }
-  .home-title { font-size: 23px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 3px; }
-  .home-title[contenteditable] { display: block; width: fit-content; max-width: 50%; outline: none; cursor: text; border-radius: 5px; padding: 1px 4px; margin-left: -4px; }
+  .home-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gray-2); margin-bottom: 6px; margin-left: 34px; }
+  .home-title { font-size: 23px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 3px; margin-left: 34px; }
+  .home-title[contenteditable] { display: block; width: fit-content; max-width: 50%; outline: none; cursor: text; border-radius: 5px; padding: 1px 4px; margin-left: 30px; }
   .home-title[contenteditable]:hover, .home-title[contenteditable]:focus { background: var(--hover); }
-  .home-sub { font-size: 11.5px; color: var(--gray-2); opacity: .55; margin-bottom: 20px; }
+  .home-sub { font-size: 11.5px; color: var(--gray-2); opacity: .55; margin-bottom: 20px; margin-left: 34px; }
 
   /* ---------- home dashboard grid: pages (half) + schedule/status (quarters) + priority (full width) ---------- */
   .home-grid { display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: min-content; gap: 16px; }
@@ -608,6 +624,13 @@
     background: linear-gradient(135deg, #ff7896, #78aaff 35%, #ffdc78 65%, #96ffc8 100%);
     color: #141318; border-color: transparent;
   }
+  .hue-picker { display: flex; gap: 7px; margin-bottom: 14px; }
+  .hue-swatch {
+    width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--line);
+    cursor: pointer; transition: transform .12s ease;
+  }
+  .hue-swatch:hover { transform: scale(1.14); }
+  .hue-swatch.on { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--ink); }
 
   /* ---------- daily greeting: shown once per day per workspace, surfaces
      what's actually urgent today so opening HQ isn't a blank stare ---------- */
@@ -699,6 +722,12 @@
       <span class="theme-chip" data-theme="light" onclick="setTheme('light')">Light</span>
       <span class="theme-chip" data-theme="dark" onclick="setTheme('dark')">Dark</span>
       <span class="theme-chip" data-theme="prism" onclick="setTheme('prism')">Prism</span>
+    </div>
+    <div class="hue-picker" id="hue-picker">
+      <span class="hue-swatch" data-hue="white" style="background:#ffffff;" onclick="setHue('white')" title="White"></span>
+      <span class="hue-swatch" data-hue="blue" style="background:#dbe9ff;" onclick="setHue('blue')" title="Blue"></span>
+      <span class="hue-swatch" data-hue="green" style="background:#dbf4e0;" onclick="setHue('green')" title="Green"></span>
+      <span class="hue-swatch" data-hue="orange" style="background:#ffe4c4;" onclick="setHue('orange')" title="Orange"></span>
     </div>
     <div class="sp-row">
       <span>Signal only</span>
@@ -884,12 +913,28 @@
     document.body.classList.remove('dark', 'prism');
     if (mode === 'dark' || mode === 'prism') document.body.classList.add(mode);
     document.querySelectorAll('.theme-chip').forEach(el => el.classList.toggle('on', el.dataset.theme === mode));
+    applyHue();
   }
   function setTheme(mode) {
     localStorage.setItem('hq_theme', mode);
     applyTheme();
   }
   applyTheme();
+
+  /* ---------- hue accent (light theme only): blue / green / orange / white ---------- */
+  function applyHue() {
+    const mode = localStorage.getItem('hq_theme') || 'light';
+    const hue = localStorage.getItem('hq_hue') || 'white';
+    document.body.classList.remove('hue-blue', 'hue-green', 'hue-orange');
+    if (mode === 'light' && hue !== 'white') document.body.classList.add('hue-' + hue);
+    document.querySelectorAll('.hue-swatch').forEach(el => el.classList.toggle('on', el.dataset.hue === hue));
+    const picker = document.getElementById('hue-picker');
+    if (picker) picker.style.display = mode === 'light' ? 'flex' : 'none';
+  }
+  function setHue(hue) {
+    localStorage.setItem('hq_hue', hue);
+    applyHue();
+  }
 
   /* ---------- signal / noise: one toggle that glows what's marked signal
      and hides everything else (the "noise") on the home dashboard ---------- */
