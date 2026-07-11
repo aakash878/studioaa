@@ -173,6 +173,16 @@ def init_db():
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
             );
             ALTER TABLE workspace_data ADD COLUMN IF NOT EXISTS widgets JSONB;
+            CREATE TABLE IF NOT EXISTS sessions (
+                sid TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                email TEXT NOT NULL,
+                name TEXT,
+                access_token TEXT,
+                refresh_token TEXT,
+                token_expiry DOUBLE PRECISION,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+            );
         """)
         conn.commit()
 
@@ -246,8 +256,55 @@ def workspace_role(cur, user_id, workspace_id):
     return row[0] if row else None
 
 
-SESSIONS = {}       # session id -> { user_id, email, name, access_token, refresh_token, token_expiry }
 PENDING_STATES = {}  # oauth "state" csrf token -> issued_at, so callback can't be spoofed
+
+
+def _create_session(user_id, email, name, access_token, refresh_token, token_expiry):
+    """Sessions live in Postgres, not an in-process dict — Render restarts the
+    process on every deploy and free-tier services also cold-start after idle
+    spin-down, which would otherwise silently log everyone out and make every
+    subsequent fetch() 401 (looking like "nothing saves after refresh")."""
+    sid = secrets.token_urlsafe(32)
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO sessions (sid, user_id, email, name, access_token, refresh_token, token_expiry)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """,
+            (sid, user_id, email, name, access_token, refresh_token, token_expiry),
+        )
+        conn.commit()
+    return sid
+
+
+def _get_session(sid):
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT user_id, email, name, access_token, refresh_token, token_expiry FROM sessions WHERE sid = %s",
+            (sid,),
+        )
+        row = cur.fetchone()
+    if not row:
+        return None
+    return {
+        "sid": sid, "user_id": row[0], "email": row[1], "name": row[2],
+        "access_token": row[3], "refresh_token": row[4], "token_expiry": row[5],
+    }
+
+
+def _update_session_tokens(sid, access_token, token_expiry):
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            "UPDATE sessions SET access_token = %s, token_expiry = %s WHERE sid = %s",
+            (access_token, token_expiry, sid),
+        )
+        conn.commit()
+
+
+def _delete_session(sid):
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("DELETE FROM sessions WHERE sid = %s", (sid,))
+        conn.commit()
 WORKSPACE_RE = re.compile(r"^/api/workspaces/(\d+)$")
 WORKSPACE_DATA_RE = re.compile(r"^/api/workspaces/(\d+)/data$")
 WORKSPACE_MEMBERS_RE = re.compile(r"^/api/workspaces/(\d+)/members$")
@@ -280,6 +337,7 @@ def _refresh_access_token(session):
         return False
     session["access_token"] = tokens.get("access_token")
     session["token_expiry"] = time.time() + int(tokens.get("expires_in", 3600))
+    _update_session_tokens(session["sid"], session["access_token"], session["token_expiry"])
     return True
 
 
@@ -338,7 +396,7 @@ def _session_from_cookie(handler):
     jar.load(raw)
     if "hq_session" not in jar:
         return None
-    return SESSIONS.get(jar["hq_session"].value)
+    return _get_session(jar["hq_session"].value)
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -556,7 +614,7 @@ class Handler(SimpleHTTPRequestHandler):
                 jar = SimpleCookie()
                 jar.load(raw)
                 if "hq_session" in jar:
-                    SESSIONS.pop(jar["hq_session"].value, None)
+                    _delete_session(jar["hq_session"].value)
             self.send_response(204)
             self.send_header("Set-Cookie", "hq_session=; Path=/; Max-Age=0")
             self.end_headers()
@@ -749,15 +807,11 @@ class Handler(SimpleHTTPRequestHandler):
                 return
             create_workspace(f"{name.split(' ')[0]}\u2019s Workspace" if name else "My Workspace", user_id)
 
-        sid = secrets.token_urlsafe(32)
-        SESSIONS[sid] = {
-            "user_id": user_id,
-            "email": claims.get("email"),
-            "name": name,
-            "access_token": tokens.get("access_token"),
-            "refresh_token": tokens.get("refresh_token"),
-            "token_expiry": time.time() + int(tokens.get("expires_in", 3600)),
-        }
+        sid = _create_session(
+            user_id, claims.get("email"), name,
+            tokens.get("access_token"), tokens.get("refresh_token"),
+            time.time() + int(tokens.get("expires_in", 3600)),
+        )
         self.send_response(302)
         self.send_header("Location", "/index.html")
         self.send_header("Set-Cookie", f"hq_session={sid}; Path=/; HttpOnly; SameSite=Lax")
@@ -774,15 +828,7 @@ class Handler(SimpleHTTPRequestHandler):
         user_id = upsert_user("dev-preview@local", "Dev Preview")
         if user_workspace_count(user_id) == 0:
             create_workspace("Dev Preview Workspace", user_id)
-        sid = secrets.token_urlsafe(32)
-        SESSIONS[sid] = {
-            "user_id": user_id,
-            "email": "dev-preview@local",
-            "name": "Dev Preview",
-            "access_token": None,
-            "refresh_token": None,
-            "token_expiry": None,
-        }
+        sid = _create_session(user_id, "dev-preview@local", "Dev Preview", None, None, None)
         self.send_response(302)
         self.send_header("Location", "/index.html")
         self.send_header("Set-Cookie", f"hq_session={sid}; Path=/; HttpOnly; SameSite=Lax")
