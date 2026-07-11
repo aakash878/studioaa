@@ -183,6 +183,17 @@ def init_db():
                 token_expiry DOUBLE PRECISION,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT now()
             );
+            CREATE TABLE IF NOT EXISTS page_shares (
+                id SERIAL PRIMARY KEY,
+                workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+                page_key TEXT NOT NULL,
+                email TEXT,
+                token TEXT UNIQUE,
+                role TEXT NOT NULL DEFAULT 'viewer',
+                invited_by INTEGER REFERENCES users(id),
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+            );
+            CREATE INDEX IF NOT EXISTS page_shares_email_idx ON page_shares(email);
         """)
         conn.commit()
 
@@ -305,10 +316,54 @@ def _delete_session(sid):
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute("DELETE FROM sessions WHERE sid = %s", (sid,))
         conn.commit()
+
+
+def _find_page(pages, page_key):
+    for p in (pages or []):
+        if p.get("key") == page_key:
+            return p
+    return None
+
+
+def _replace_page(pages, page_key, updates):
+    """Returns a new pages array with the one page matching page_key merged
+    with `updates` (e.g. {"blocks": [...]} or {"rows": [...], "cols": [...]}).
+    Every other page is left untouched — this lets a page-guest (viewer/editor
+    scoped to a single page, not the whole workspace) save an edit without
+    ever reading or writing the rest of the workspace's data."""
+    out = []
+    for p in (pages or []):
+        if p.get("key") == page_key:
+            merged = dict(p)
+            merged.update(updates)
+            out.append(merged)
+        else:
+            out.append(p)
+    return out
+
+
+def _page_share_access(cur, user_id, email, workspace_id, page_key):
+    """Returns 'owner' (via workspace_role) or the page_shares.role for a
+    page-guest, or None if this user has no access to this page at all."""
+    role = workspace_role(cur, user_id, workspace_id)
+    if role:
+        return role
+    cur.execute(
+        "SELECT role FROM page_shares WHERE workspace_id = %s AND page_key = %s AND email = %s",
+        (workspace_id, page_key, email),
+    )
+    row = cur.fetchone()
+    return row[0] if row else None
+
+
 WORKSPACE_RE = re.compile(r"^/api/workspaces/(\d+)$")
 WORKSPACE_DATA_RE = re.compile(r"^/api/workspaces/(\d+)/data$")
 WORKSPACE_MEMBERS_RE = re.compile(r"^/api/workspaces/(\d+)/members$")
 WORKSPACE_MEMBER_RE = re.compile(r"^/api/workspaces/(\d+)/members/([^/]+)$")
+PAGE_SHARES_RE = re.compile(r"^/api/workspaces/(\d+)/pages/([^/]+)/shares$")
+PAGE_SHARE_RE = re.compile(r"^/api/workspaces/(\d+)/pages/([^/]+)/shares/(\d+)$")
+SHARED_PAGE_RE = re.compile(r"^/api/workspaces/(\d+)/pages/([^/]+)/view$")
+SHARED_TOKEN_RE = re.compile(r"^/api/shared/([A-Za-z0-9_-]+)$")
 
 
 def _refresh_access_token(session):
@@ -400,6 +455,14 @@ def _session_from_cookie(handler):
 
 
 class Handler(SimpleHTTPRequestHandler):
+    def end_headers(self):
+        # Force revalidation on every load for the app shell so a plain
+        # refresh (not just a hard refresh) always picks up the latest
+        # deployed index.html/login.html instead of a browser-cached copy.
+        if self.path in ("/", "/index.html", "/login.html"):
+            self.send_header("Cache-Control", "no-cache, must-revalidate")
+        super().end_headers()
+
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path

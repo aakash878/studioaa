@@ -504,7 +504,7 @@
     transition: transform .22s cubic-bezier(.3,1,.4,1);
     backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%);
   }
-  .edge-hover:hover ~ .side-panel, .sp-handle:hover ~ .side-panel, .side-panel:hover, body.sp-pinned .side-panel { transform: translateX(0); }
+  .sp-wrap:hover .side-panel, body.sp-pinned .side-panel { transform: translateX(0); }
   header, #app { transition: margin-right .22s cubic-bezier(.3,1,.4,1); }
   body.sp-pinned header, body.sp-pinned #app { margin-right: 240px; }
   .sp-handle {
@@ -516,7 +516,7 @@
     transition: right .22s cubic-bezier(.3,1,.4,1), color .15s;
   }
   .sp-handle:hover { color: var(--ink); }
-  body.sp-pinned .sp-handle { right: 240px; }
+  .sp-wrap:hover .sp-handle, body.sp-pinned .sp-handle { right: 240px; }
 
   /* ---------- collapse/expand toggle for pages that have subpages ---------- */
   .prow-collapse, .sp-collapse {
@@ -713,6 +713,7 @@
 
 <div id="app"></div>
 
+<div class="sp-wrap" id="sp-wrap">
 <div class="edge-hover" id="edge-hover"></div>
 <div class="sp-handle" id="sp-handle" onclick="toggleSidePanelPinned()" title="Pin panel open">&lsaquo;</div>
 <aside class="side-panel" id="side-panel">
@@ -766,6 +767,7 @@
     </div>
   </div>
 </aside>
+</div>
 
 <div class="toast" id="toast"></div>
 
@@ -1211,6 +1213,19 @@
 
   let pages = SEED_PAGES;
   function savePages() { saveWorkspaceData(); touchActivity(); }
+  /* Enter on a single-line title field should save/exit instead of behaving
+     like a normal Return key (which, in a contenteditable, inserts a line
+     break and visually "drops it down"). Wired via onkeydown on every
+     title-like contenteditable (home title, page names, widget headers,
+     category names, page-title shells). */
+  function blurOnEnter(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.target.blur();
+      return false;
+    }
+    return true;
+  }
   /* ---------- home widget labels: the built-in "Next few days" / "Job
      status" / "What to work on today" headers are editable, same as page
      titles \u2014 overrides are stored per-workspace, defaults fill in the rest ---------- */
@@ -1232,8 +1247,8 @@
   function widgetHeaderHTML(key) {
     const d = defaultWidgetLabels()[key];
     const l = widgetLabels[key] || d;
-    return '<div class="widget-title" contenteditable spellcheck="false" oninput="setWidgetLabel(\'' + key + '\',\'title\', this.textContent)">' + esc(l.title) + '</div>' +
-      '<div class="widget-sub" contenteditable spellcheck="false" oninput="setWidgetLabel(\'' + key + '\',\'sub\', this.textContent)">' + esc(l.sub) + '</div>';
+    return '<div class="widget-title" contenteditable spellcheck="false" onkeydown="return blurOnEnter(event)" oninput="setWidgetLabel(\'' + key + '\',\'title\', this.textContent)">' + esc(l.title) + '</div>' +
+      '<div class="widget-sub" contenteditable spellcheck="false" onkeydown="return blurOnEnter(event)" oninput="setWidgetLabel(\'' + key + '\',\'sub\', this.textContent)">' + esc(l.sub) + '</div>';
   }
   function nowLabel() {
     const d = new Date();
@@ -1609,7 +1624,7 @@
         ' onclick="openPage(\'' + p.key + '\')">' +
         '<span class="prow-star' + (p.signal ? ' on' : '') + '" onclick="event.stopPropagation(); toggleSignal(\'' + p.key + '\')" title="Mark as signal">' + (p.signal ? '\u2605' : '\u2606') + '</span>' +
         (entry.hasChildren ? '<span class="prow-collapse' + (collapsed ? '' : ' open') + '" onclick="event.stopPropagation(); toggleCollapse(\'' + p.key + '\')" title="Show/hide subpages">\u25b6</span>' : (entry.isChild ? '<span class="prow-parent-hint">\u21b3</span>' : '')) +
-        '<span class="prow-name" id="prowname-' + p.key + '" contenteditable spellcheck="false" onclick="event.stopPropagation()" oninput="renamePage(\'' + p.key + '\', this.textContent)">' + esc(p.label) + '</span>' +
+        '<span class="prow-name" id="prowname-' + p.key + '" contenteditable spellcheck="false" onclick="event.stopPropagation()" onkeydown="return blurOnEnter(event)" oninput="renamePage(\'' + p.key + '\', this.textContent)">' + esc(p.label) + '</span>' +
         '<span class="prow-spacer"></span>' +
         (pinned
           ? '<span class="prow-pin-badge" onclick="event.stopPropagation(); openPinModalForWidget(\'' + pinned.id + '\')" title="Pinned to home &mdash; click to change view or unpin">pinned</span>'
@@ -1622,7 +1637,7 @@
       '<div class="prow-add" onclick="openImport()">+ Import notes, doc, or sheet</div>';
     return '<div class="home">' +
       '<div class="home-eyebrow">Workspace</div>' +
-      '<div class="home-title" contenteditable spellcheck="false" oninput="saveWorkspaceName(this.textContent)">' + esc(workspaceName) + '</div>' +
+      '<div class="home-title" contenteditable spellcheck="false" onkeydown="return blurOnEnter(event)" oninput="saveWorkspaceName(this.textContent)">' + esc(workspaceName) + '</div>' +
       '<div class="home-sub" id="home-clock">' + nowLabel() + '</div>' +
       '<div class="home-grid">' +
       '<div class="hg-pages page-list"><div class="hg-pages-header">' + widgetHeaderHTML('pages') + '</div>' + pagesListHTML + '</div>' +
@@ -1653,7 +1668,7 @@
         ' ondragstart="pageDragStart(event, \'' + p.key + '\')" ondragover="pageDragOver(event, \'' + p.key + '\')" ondragleave="pageDragLeave(event)" ondrop="pageDrop(event, \'' + p.key + '\')" ondragend="pageDragEnd(event)"' +
         ' onclick="openPage(\'' + p.key + '\')">' +
         (entry.hasChildren ? '<span class="sp-collapse' + (collapsed ? '' : ' open') + '" onclick="event.stopPropagation(); toggleCollapse(\'' + p.key + '\')">\u25b6</span>' : '') +
-        '<span class="sp-page-name" id="spname-' + p.key + '" contenteditable spellcheck="false" onclick="event.stopPropagation()" oninput="renamePage(\'' + p.key + '\', this.textContent)">' + esc(p.label) + '</span>' +
+        '<span class="sp-page-name" id="spname-' + p.key + '" contenteditable spellcheck="false" onclick="event.stopPropagation()" onkeydown="return blurOnEnter(event)" oninput="renamePage(\'' + p.key + '\', this.textContent)">' + esc(p.label) + '</span>' +
         (pinned ? '<span class="sp-page-pinned" title="Pinned to home dashboard">(home page)</span>' : '') +
         '</div>';
     }).join('');
@@ -1923,7 +1938,7 @@
 
   function jobSheetShellHTML() {
     return '<div class="shell"><nav id="nav"></nav><main>' +
-      '<div class="page-title" id="page-title" contenteditable spellcheck="false" oninput="renameCat(activeKey, this.textContent)"></div><div class="page-sub" id="page-sub"></div>' +
+      '<div class="page-title" id="page-title" contenteditable spellcheck="false" onkeydown="return blurOnEnter(event)" oninput="renameCat(activeKey, this.textContent)"></div><div class="page-sub" id="page-sub"></div>' +
       '<div id="filter-bar-slot"></div>' +
       '<div class="table-wrap"><table id="tbl"><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>' +
       '<div class="add-row" onclick="addRow()">+ New</div>' +
@@ -1932,7 +1947,7 @@
   function renderNav() {
     document.getElementById('nav').innerHTML =
       cats.map(c => '<div class="cat' + (c.key === activeKey ? ' on' : '') + '" onclick="setActive(\'' + c.key + '\')">' +
-        '<span class="cat-name" id="catname-' + c.key + '" contenteditable spellcheck="false" onclick="event.stopPropagation()" oninput="renameCat(\'' + c.key + '\', this.textContent)">' + esc(c.label) + '</span>' +
+        '<span class="cat-name" id="catname-' + c.key + '" contenteditable spellcheck="false" onclick="event.stopPropagation()" onkeydown="return blurOnEnter(event)" oninput="renameCat(\'' + c.key + '\', this.textContent)">' + esc(c.label) + '</span>' +
         '<span class="cat-n">' + c.rows.length + '</span>' +
         '<button class="cat-del" onclick="event.stopPropagation(); delCat(\'' + c.key + '\')" title="Delete">\u00d7</button>' +
         '</div>').join('') +
@@ -2139,7 +2154,7 @@
      ===================================================================== */
   function pageTableShellHTML() {
     return '<main style="padding:28px 32px 80px;">' +
-      '<div class="page-title" id="pt-title" contenteditable spellcheck="false" oninput="renamePage(view, this.textContent)"></div><div class="page-sub" id="pt-sub"></div>' +
+      '<div class="page-title" id="pt-title" contenteditable spellcheck="false" onkeydown="return blurOnEnter(event)" oninput="renamePage(view, this.textContent)"></div><div class="page-sub" id="pt-sub"></div>' +
       '<div id="pt-filter-bar-slot"></div>' +
       '<div class="table-wrap"><table id="pt-tbl"><thead id="pt-thead"></thead><tbody id="pt-tbody"></tbody></table></div>' +
       '<div class="add-row" onclick="ptAddRow()">+ New</div>' +
@@ -2225,7 +2240,7 @@
     return items.map((it, i) => {
       const path = prefix ? prefix + '.' + i : '' + i;
       let html = '<li class="doc-li' + (prefix ? ' sub' : '') + '">' +
-        '<span class="doc-li-text" contenteditable oninput="docSetItem(' + bi + ',\'' + path + '\', this.innerHTML)">' + it.html + '</span>' +
+        '<span class="doc-li-text" contenteditable onfocus="clearBlockPlaceholder(this)" oninput="docSetItem(' + bi + ',\'' + path + '\', this.innerHTML)">' + it.html + '</span>' +
         '<button class="doc-li-del" onclick="docDelItem(' + bi + ',\'' + path + '\')" title="Remove">\u00d7</button>' +
         '</li>';
       if (it.sub && it.sub.length) html += '<ul class="doc-ul">' + docListHTML(it.sub, bi, path) + '</ul>';
@@ -2244,17 +2259,27 @@
   }
   function docToggleHTML(b, bi) {
     return '<details class="doc-toggle"' + (b.open ? ' open' : '') + ' ontoggle="docToggleOpen(' + bi + ', this.open)">' +
-      '<summary class="doc-toggle-summary" contenteditable oninput="docSetBlock(' + bi + ', this.innerHTML)">' + b.html + '</summary>' +
+      '<summary class="doc-toggle-summary" contenteditable onfocus="clearBlockPlaceholder(this)" oninput="docSetBlock(' + bi + ', this.innerHTML)">' + b.html + '</summary>' +
       '<div class="doc-toggle-body">' +
-      b.items.map((it, ii) => '<div class="doc-toggle-item" contenteditable oninput="docToggleSetItem(' + bi + ',' + ii + ', this.innerHTML)">' + it.html + '</div>').join('') +
+      b.items.map((it, ii) => '<div class="doc-toggle-item" contenteditable onfocus="clearBlockPlaceholder(this)" oninput="docToggleSetItem(' + bi + ',' + ii + ', this.innerHTML)">' + it.html + '</div>').join('') +
       '<div class="doc-additem" onclick="docToggleAddItem(' + bi + ')">+ add line</div>' +
       '</div></details>';
   }
+  /* Blocks start out with generic placeholder copy ("New heading", "Type
+     something\u2026", etc.) \u2014 clicking into one to write your own content
+     should clear that placeholder immediately instead of making you select
+     and delete it first. Only fires while the block still has exactly its
+     original placeholder text, so clicking back into real content you've
+     already written is untouched. */
+  const BLOCK_PLACEHOLDERS = ['New heading', 'New subheading', 'Type something\u2026', 'New item', 'Toggle', 'New line'];
+  function clearBlockPlaceholder(el) {
+    if (BLOCK_PLACEHOLDERS.indexOf(el.textContent) !== -1) el.textContent = '';
+  }
   function docHTML(blocks) {
     return blocks.map((b, bi) => {
-      if (b.t === 'h2') return '<div class="doc-h2" contenteditable oninput="docSetBlock(' + bi + ', this.innerHTML)">' + b.html + '</div>';
-      if (b.t === 'h3') return '<div class="doc-h3" contenteditable oninput="docSetBlock(' + bi + ', this.innerHTML)">' + b.html + '</div>';
-      if (b.t === 'p') return '<div class="doc-p" contenteditable oninput="docSetBlock(' + bi + ', this.innerHTML)">' + b.html + '</div>';
+      if (b.t === 'h2') return '<div class="doc-h2" contenteditable onfocus="clearBlockPlaceholder(this)" oninput="docSetBlock(' + bi + ', this.innerHTML)">' + b.html + '</div>';
+      if (b.t === 'h3') return '<div class="doc-h3" contenteditable onfocus="clearBlockPlaceholder(this)" oninput="docSetBlock(' + bi + ', this.innerHTML)">' + b.html + '</div>';
+      if (b.t === 'p') return '<div class="doc-p" contenteditable onfocus="clearBlockPlaceholder(this)" oninput="docSetBlock(' + bi + ', this.innerHTML)">' + b.html + '</div>';
       if (b.t === 'hr') return '<hr class="doc-hr">';
       if (b.t === 'table') return docTableHTML(b, bi);
       if (b.t === 'toggle') return docToggleHTML(b, bi);
@@ -2448,7 +2473,7 @@
         '<button class="pin-change" onclick="event.stopPropagation(); openPinModalForWidget(\'' + w.id + '\')" title="Change this widget\'s view">Change view</button>' +
         '<button class="pin-unpin" onclick="event.stopPropagation(); unpinWidget(\'' + w.id + '\')" title="Unpin from home">Unpin</button>' +
         '</div>' +
-        '<div class="widget-title" contenteditable spellcheck="false" onclick="event.stopPropagation()" oninput="renamePinnedWidget(\'' + w.id + '\', this.textContent)">' + esc(w.label) + '</div>' +
+        '<div class="widget-title" contenteditable spellcheck="false" onclick="event.stopPropagation()" onkeydown="return blurOnEnter(event)" oninput="renamePinnedWidget(\'' + w.id + '\', this.textContent)">' + esc(w.label) + '</div>' +
         '<div class="widget-sub">' + (src ? esc(src.label) : 'Missing page') + '</div>' +
         body + '</div>';
     }).join('');
