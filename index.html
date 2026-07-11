@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>HQ · Studio Aa</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,600;14..32,700,14..32,800&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,600;14..32,700;14..32,800&display=swap');
   :root {
     --ink: #141318;
     --gray-1: #55535f;
@@ -30,6 +30,24 @@
     --surface-glass-lite: rgba(28,27,32,.28);
     --hover: rgba(255,255,255,.04);
   }
+  /* ---------- prism: white base, but every glass surface picks up a soft
+     rainbow-hued edge, like frosted glass catching light ---------- */
+  body.prism {
+    --ink: #141318; --gray-1: #55535f; --gray-2: #8a8894;
+    --line: rgba(20,19,24,.1); --line-soft: rgba(20,19,24,.06);
+    --bg: #fbfbfd; --surface: #ffffff;
+    --surface-glass: rgba(255,255,255,.6);
+    --surface-glass-lite: rgba(255,255,255,.3);
+    --hover: rgba(20,19,24,.025);
+  }
+  body.prism .home .page-list, body.prism .home .widget-card,
+  body.prism .side-panel, body.prism .onboard-card, body.prism .greet-card,
+  body.prism .modal-card, body.prism .hdr-ws-pop, body.prism .toast {
+    background: linear-gradient(135deg, rgba(255,120,150,.10), rgba(120,170,255,.08) 30%, rgba(255,220,120,.08) 60%, rgba(150,255,200,.1) 100%), var(--surface-glass);
+    border-image: linear-gradient(135deg, rgba(255,120,150,.5), rgba(120,170,255,.4) 30%, rgba(255,220,120,.4) 60%, rgba(150,255,200,.5) 100%) 1;
+    box-shadow: 0 2px 24px rgba(140,120,255,.08), 0 0 0 1px rgba(255,255,255,.4) inset;
+  }
+  body.prism header { background: linear-gradient(90deg, rgba(255,120,150,.05), rgba(120,170,255,.05), rgba(255,220,120,.05)); }
   * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
   html { -webkit-font-smoothing: antialiased; background: var(--bg); }
   body {
@@ -45,6 +63,8 @@
   }
   .hdr-left { display: flex; align-items: baseline; gap: 6px; cursor: default; }
   .hdr-right { display: flex; align-items: center; gap: 10px; }
+  .hdr-who-wrap { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.3; }
+  .hdr-freshness { font-size: 9.5px; color: var(--gray-2); opacity: .55; }
   .hdr-word { font-size: 13.5px; font-weight: 700; letter-spacing: -0.02em; cursor: pointer; }
   .hdr-word:hover { color: var(--gray-1); }
   .hdr-ws-toggle { position: relative; display: inline-flex; align-items: baseline; margin-left: 4px; }
@@ -56,6 +76,8 @@
     box-shadow: 0 8px 24px rgba(0,0,0,.14); z-index: 55;
   }
   .hdr-ws-pop.show { display: block; }
+  .crumb-home { font-size: 12px; color: var(--gray-2); cursor: pointer; }
+  .crumb-home:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
   .crumb-sep { color: var(--gray-2); font-size: 12px; }
   .crumb-cur { font-size: 12px; color: var(--gray-2); }
   .crumb-pin { font-size: 11px; color: var(--gray-2); margin-left: 10px; cursor: pointer; padding: 2px 7px; border-radius: 20px; border: 1px solid var(--line); }
@@ -66,12 +88,13 @@
   .pin-type-opt.on { border-color: var(--ink); background: var(--hover); }
   .pin-type-name { font-size: 12px; font-weight: 700; }
   .pin-type-sub { font-size: 10.5px; color: var(--gray-2); margin-top: 2px; }
-  .hg-pinned { position: relative; padding-right: 56px; }
-  .pin-unpin {
-    position: absolute; top: 14px; right: 14px; font-size: 10px; color: var(--gray-2);
+  .hg-pinned { position: relative; padding-right: 64px; }
+  .pin-actions { position: absolute; top: 14px; right: 14px; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+  .pin-unpin, .pin-change {
+    font-size: 10px; color: var(--gray-2);
     background: none; border: none; cursor: pointer; padding: 2px 6px; border-radius: 5px;
   }
-  .pin-unpin:hover { color: var(--ink); background: var(--hover); }
+  .pin-unpin:hover, .pin-change:hover { color: var(--ink); background: var(--hover); }
   .who { font-size: 11px; color: var(--gray-2); }
   .signout {
     font-size: 11px; color: var(--gray-2); background: none; border: none; cursor: pointer;
@@ -97,9 +120,9 @@
   .home { max-width: 980px; margin: 0 auto; padding: 48px 28px 80px; }
   .home-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gray-2); margin-bottom: 6px; }
   .home-title { font-size: 23px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 3px; }
-  .home-title[contenteditable] { display: inline-block; max-width: 100%; outline: none; cursor: text; border-radius: 5px; padding: 1px 4px; margin-left: -4px; }
+  .home-title[contenteditable] { display: inline-block; max-width: 25%; outline: none; cursor: text; border-radius: 5px; padding: 1px 4px; margin-left: -4px; }
   .home-title[contenteditable]:hover, .home-title[contenteditable]:focus { background: var(--hover); }
-  .home-sub { font-size: 11.5px; color: var(--gray-2); margin-bottom: 20px; }
+  .home-sub { font-size: 11.5px; color: var(--gray-2); opacity: .55; margin-bottom: 20px; }
 
   /* ---------- home dashboard grid: pages (half) + schedule/status (quarters) + priority (full width) ---------- */
   .home-grid { display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: min-content; gap: 16px; }
@@ -107,18 +130,27 @@
   .hg-schedule { grid-column: 2; grid-row: 1; }
   .hg-status { grid-column: 2; grid-row: 2; }
   .hg-priority { grid-column: 1 / 3; }
+  .hg-calendar { grid-column: 1 / 3; }
   .widget-card {
     background: var(--surface-glass); backdrop-filter: blur(16px) saturate(160%); -webkit-backdrop-filter: blur(16px) saturate(160%);
     border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px;
   }
+  .hg-clickable { cursor: pointer; transition: transform .15s cubic-bezier(.2,.9,.3,1), border-color .15s ease; }
+  .hg-clickable:hover { border-color: var(--gray-2); transform: translateY(-1px); }
   .widget-title { font-size: 12px; font-weight: 800; letter-spacing: -0.01em; }
   .widget-sub { font-size: 10.5px; color: var(--gray-2); margin-bottom: 8px; }
   .hg-pages-header { padding: 14px 16px 10px; border-bottom: 1px solid var(--line); }
   .hg-pages-header .widget-sub { margin-bottom: 0; }
-  .widget-title[contenteditable], .widget-sub[contenteditable] { outline: none; cursor: text; border-radius: 4px; margin-left: -3px; padding: 0 3px; }
+  .widget-title[contenteditable], .widget-sub[contenteditable] { display: inline-block; max-width: 25%; outline: none; cursor: text; border-radius: 4px; margin-left: -3px; padding: 0 3px; }
   .widget-title[contenteditable]:hover, .widget-title[contenteditable]:focus,
   .widget-sub[contenteditable]:hover, .widget-sub[contenteditable]:focus { background: var(--hover); }
   .widget-empty { font-size: 11.5px; color: var(--gray-2); padding: 8px 0; }
+  .cal-connect {
+    display: inline-block; font-size: 11px; font-weight: 700; color: var(--ink);
+    border: 1px solid var(--line); border-radius: 20px; padding: 5px 12px; text-decoration: none;
+    margin-top: 2px;
+  }
+  .cal-connect:hover { background: var(--hover); }
   .tl-item { display: flex; align-items: baseline; gap: 9px; padding: 5px 0; border-bottom: 1px solid var(--line-soft); font-size: 11.5px; }
   .tl-item:last-child { border-bottom: none; }
   .tl-date { font-weight: 700; color: var(--ink); flex-shrink: 0; width: 52px; }
@@ -146,20 +178,20 @@
   .pin-doc-preview div { padding: 3px 0; }
   @media (max-width: 760px) {
     .home-grid { grid-template-columns: 1fr; }
-    .hg-pages, .hg-schedule, .hg-status, .hg-priority { grid-column: 1; grid-row: auto; }
+    .hg-pages, .hg-schedule, .hg-status, .hg-priority, .hg-calendar { grid-column: 1; grid-row: auto; }
   }
 
   /* ---------- signal / noise: hide the noise widgets, glow what's marked signal ---------- */
   body.focus-mode .hg-schedule, body.focus-mode .hg-status { display: none; }
   body.focus-mode .home-grid { display: flex; flex-direction: column; }
   body.focus-mode .hg-priority {
-    box-shadow: 0 0 0 1px rgba(216,179,77,.4), 0 0 30px rgba(216,179,77,.22);
-    border-color: rgba(216,179,77,.5);
+    box-shadow: 0 0 0 1px rgba(196,201,209,.5), 0 0 30px rgba(196,201,209,.3);
+    border-color: rgba(196,201,209,.6);
   }
   body.focus-mode .prow:not([data-signal="1"]) { display: none; }
   body.focus-mode .prow[data-signal="1"] {
-    box-shadow: inset 0 0 0 1px rgba(216,179,77,.4);
-    background: rgba(216,179,77,.08);
+    box-shadow: inset 0 0 0 1px rgba(196,201,209,.5);
+    background: rgba(196,201,209,.1);
     border-radius: 6px;
   }
   .home-freshness { font-size: 10.5px; color: var(--gray-2); margin-bottom: 20px; margin-top: -14px; }
@@ -174,18 +206,21 @@
   }
   .prow {
     display: flex; align-items: center; gap: 10px;
-    padding: 9px 12px; cursor: pointer; font-size: 13px; font-weight: 600;
+    padding: 9px 12px; cursor: pointer; font-size: 12.5px; font-weight: 600;
     user-select: none; border-bottom: 1px solid var(--line-soft);
   }
   .prow:last-child { border-bottom: none; }
   .prow:hover { background: var(--hover); }
+  .prow.drop-target, .sp-page.drop-target {
+    box-shadow: inset 0 0 0 1.5px rgba(196,201,209,.9); background: rgba(196,201,209,.14); border-radius: 6px;
+  }
   .prow-star {
     font-size: 10.5px; color: var(--line); cursor: pointer; flex-shrink: 0; width: 12px;
     text-align: center; transition: color .12s ease;
   }
-  .prow-star.on { color: #d8b34d; }
+  .prow-star.on { color: #9ea6b3; text-shadow: 0 0 8px rgba(158,166,179,.7); }
   .prow:hover .prow-star { color: var(--gray-2); }
-  .prow:hover .prow-star.on { color: #d8b34d; }
+  .prow:hover .prow-star.on { color: #9ea6b3; }
   .prow-name { flex: 0 1 auto; max-width: 70%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .prow-name[contenteditable] { outline: none; cursor: text; }
   .prow-name[contenteditable]:focus { background: var(--hover); border-radius: 4px; }
@@ -195,7 +230,15 @@
   .prow-pin-badge {
     font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
     color: var(--gray-2); flex-shrink: 0; padding: 2px 6px; border-radius: 20px; border: 1px solid var(--line);
+    cursor: pointer;
   }
+  .prow-pin-badge:hover { color: var(--ink); background: var(--hover); }
+  .prow-pin {
+    display: none; border: none; background: none; color: var(--gray-2); cursor: pointer;
+    font-size: 10px; flex-shrink: 0; padding: 2px 7px; border-radius: 20px; border: 1px solid var(--line);
+  }
+  .prow:hover .prow-pin { display: inline-block; }
+  .prow-pin:hover { color: var(--ink); background: var(--hover); }
   .prow-del {
     display: none; border: none; background: none; color: var(--gray-2); cursor: pointer;
     font-size: 14px; flex-shrink: 0; line-height: 1;
@@ -438,7 +481,7 @@
     transition: transform .22s cubic-bezier(.3,1,.4,1);
     backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%);
   }
-  .edge-hover:hover ~ .side-panel, .side-panel:hover, body.sp-pinned .side-panel { transform: translateX(0); }
+  .edge-hover:hover ~ .side-panel, .sp-handle:hover ~ .side-panel, .side-panel:hover, body.sp-pinned .side-panel { transform: translateX(0); }
   header, #app { transition: margin-right .22s cubic-bezier(.3,1,.4,1); }
   body.sp-pinned header, body.sp-pinned #app { margin-right: 240px; }
   .sp-handle {
@@ -455,8 +498,10 @@
   /* ---------- collapse/expand toggle for pages that have subpages ---------- */
   .prow-collapse, .sp-collapse {
     cursor: pointer; color: var(--gray-2); font-size: 9px; width: 12px; flex-shrink: 0;
-    display: inline-flex; align-items: center; justify-content: center; transition: transform .15s;
+    display: inline-flex; align-items: center; justify-content: center;
+    opacity: .18; transition: transform .15s, opacity .15s;
   }
+  .prow:hover .prow-collapse, .sp-page:hover .sp-collapse, .prow-collapse.open, .sp-collapse.open { opacity: .85; }
   .prow-collapse.open, .sp-collapse.open { transform: rotate(90deg); }
   .prow.collapsed-child, .sp-page.collapsed-child { display: none; }
   .sp-section { margin-bottom: 22px; }
@@ -468,16 +513,24 @@
   .sp-page-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .sp-page-name[contenteditable] { outline: none; cursor: text; }
   .sp-page-name[contenteditable]:focus { background: var(--hover); border-radius: 4px; }
+  .sp-page-pinned { font-size: 9.5px; font-weight: 700; color: var(--gray-2); opacity: .7; flex-shrink: 0; white-space: nowrap; }
   .ws-item { padding: 6px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ws-item:hover { background: var(--hover); }
   .ws-item.on { color: var(--ink); background: var(--hover); }
   .ws-item.ws-new { color: var(--gray-2); font-weight: 500; }
   .sp-tools { display: flex; flex-direction: column; gap: 1px; }
   .sp-tool-primary {
-    background: var(--ink); color: var(--bg); border-radius: 7px; margin-bottom: 6px; font-weight: 700;
+    background: linear-gradient(135deg, rgba(196,201,209,.22), rgba(196,201,209,.08));
+    color: var(--ink); border: 1px solid rgba(196,201,209,.5);
+    box-shadow: 0 0 0 1px rgba(196,201,209,.15), 0 0 18px rgba(196,201,209,.35);
+    border-radius: 7px; margin-bottom: 6px; font-weight: 700;
+    transition: box-shadow .18s ease, background .18s ease;
   }
-  .sp-tool-primary:hover { background: var(--ink); color: var(--bg); opacity: .85; }
-  .sp-tool-primary .sp-tool-i { background: var(--bg); color: var(--ink); }
+  .sp-tool-primary:hover {
+    background: linear-gradient(135deg, rgba(196,201,209,.34), rgba(196,201,209,.14));
+    box-shadow: 0 0 0 1px rgba(196,201,209,.25), 0 0 26px rgba(196,201,209,.5);
+  }
+  .sp-tool-primary .sp-tool-i { background: rgba(196,201,209,.35); color: var(--ink); }
   .sp-tool {
     display: flex; align-items: center; gap: 8px; padding: 6px; border-radius: 6px;
     font-size: 12px; font-weight: 600; color: var(--gray-1); cursor: pointer;
@@ -536,6 +589,51 @@
   .ob-chip { font-size: 12px; font-weight: 600; padding: 7px 12px; border-radius: 20px; border: 1px solid var(--line); cursor: pointer; color: var(--gray-1); }
   .ob-chip.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 
+  /* ---------- theme picker (side panel): light / dark / prism ---------- */
+  .theme-picker { display: flex; gap: 6px; margin-bottom: 14px; }
+  .theme-chip {
+    flex: 1; text-align: center; font-size: 11px; font-weight: 700; padding: 7px 4px;
+    border-radius: 8px; border: 1px solid var(--line); cursor: pointer; color: var(--gray-1);
+  }
+  .theme-chip:hover { background: var(--hover); }
+  .theme-chip.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .theme-chip[data-theme="prism"].on {
+    background: linear-gradient(135deg, #ff7896, #78aaff 35%, #ffdc78 65%, #96ffc8 100%);
+    color: #141318; border-color: transparent;
+  }
+
+  /* ---------- daily greeting: shown once per day per workspace, surfaces
+     what's actually urgent today so opening HQ isn't a blank stare ---------- */
+  .greet-backdrop {
+    display: none; position: fixed; inset: 0; z-index: 59; align-items: center; justify-content: center;
+    background: rgba(20,19,24,.4); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  }
+  .greet-backdrop.show { display: flex; }
+  .greet-card {
+    width: 100%; max-width: 420px; background: var(--surface-glass); border: 1px solid var(--line);
+    border-radius: 14px; padding: 32px 28px; box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%);
+    animation: cardIn .5s cubic-bezier(.2,.9,.3,1) both;
+  }
+  @keyframes cardIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  .greet-title { font-size: 21px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 4px; }
+  .greet-sub { font-size: 11.5px; color: var(--gray-2); margin-bottom: 18px; }
+  .greet-list { display: flex; flex-direction: column; gap: 1px; margin-bottom: 20px; max-height: 260px; overflow-y: auto; }
+  .greet-item {
+    display: flex; align-items: baseline; gap: 9px; padding: 9px 10px; border-radius: 8px; cursor: pointer;
+    font-size: 12.5px; border-bottom: 1px solid var(--line-soft);
+  }
+  .greet-item:last-child { border-bottom: none; }
+  .greet-item:hover { background: var(--hover); }
+  .greet-rank {
+    font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--gray-2);
+    flex-shrink: 0; padding: 2px 6px; border-radius: 20px; border: 1px solid var(--line);
+  }
+  .greet-name { font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .greet-meta { font-size: 10.5px; color: var(--gray-2); flex-shrink: 0; }
+  .greet-empty { font-size: 12px; color: var(--gray-2); padding: 6px 2px 2px; }
+  .greet-actions { display: flex; justify-content: flex-end; }
+
   /* ---------- weather backdrop: soft, slow, alive ---------- */
   .bg-weather {
     position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
@@ -575,7 +673,10 @@
     <span id="crumb"></span>
   </div>
   <div class="hdr-right">
-    <span class="who" id="hdr-who"></span>
+    <span class="hdr-who-wrap">
+      <span class="who" id="hdr-who"></span>
+      <span class="hdr-freshness" id="hdr-freshness"></span>
+    </span>
     <button class="signout" id="hdr-signout-btn" onclick="signOut()" style="display:none;">sign out</button>
   </div>
 </header>
@@ -587,9 +688,10 @@
 <aside class="side-panel" id="side-panel">
   <div class="sp-section">
     <div class="sp-label">Appearance</div>
-    <div class="sp-row">
-      <span>Dark mode</span>
-      <button class="toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode"></button>
+    <div class="theme-picker" id="theme-picker">
+      <span class="theme-chip" data-theme="light" onclick="setTheme('light')">Light</span>
+      <span class="theme-chip" data-theme="dark" onclick="setTheme('dark')">Dark</span>
+      <span class="theme-chip" data-theme="prism" onclick="setTheme('prism')">Prism</span>
     </div>
     <div class="sp-row">
       <span>Signal only</span>
@@ -672,8 +774,8 @@
 
 <div class="modal-backdrop" id="pin-backdrop" onclick="if(event.target===this) closePinModal()">
   <div class="modal-card">
-    <div class="modal-title">Pin to home dashboard</div>
-    <div class="modal-hint">Surface this page as a live widget on your home screen &mdash; pick how it should look.</div>
+    <div class="modal-title" id="pin-modal-title">Pin to home dashboard</div>
+    <div class="modal-hint" id="pin-modal-hint">Surface this page as a live widget on your home screen &mdash; pick how it should look.</div>
     <div class="pin-type-grid" id="pin-type-grid">
       <div class="pin-type-opt" data-type="visual" onclick="choosePinType('visual')">
         <div class="pin-type-name">Visual</div>
@@ -691,32 +793,13 @@
     <div class="modal-field-label">Widget title</div>
     <input class="modal-input" id="pin-label" placeholder="Widget title" />
     <div class="modal-actions">
+      <button class="modal-btn" id="pin-modal-unpin" onclick="unpinFromModal()" style="display:none; margin-right:auto; color:#b04030;">Unpin</button>
       <button class="modal-btn" onclick="closePinModal()">Cancel</button>
-      <button class="modal-btn primary" onclick="submitPin()">Pin to home</button>
+      <button class="modal-btn primary" id="pin-modal-submit" onclick="submitPin()">Pin to home</button>
     </div>
   </div>
 </div>
 
-<div class="modal-backdrop" id="newnote-backdrop" onclick="if(event.target===this) closeNewNote()">
-  <div class="modal-card">
-    <div class="modal-title">New note</div>
-    <div class="modal-hint">Give it a name and it opens immediately so you can start writing. Nest it under an existing page, or leave it top-level &mdash; you can pin any page to the home dashboard as a live widget later.</div>
-    <input class="modal-input" id="newnote-name" placeholder="Note name" />
-    <div class="modal-field-label">Type</div>
-    <select class="modal-select" id="newnote-type">
-      <option value="doc">Written note (doc)</option>
-      <option value="table">Table</option>
-    </select>
-    <div class="modal-field-label">Lives under <span style="font-weight:400;color:var(--gray-2);">&mdash; where it's nested in the page list</span></div>
-    <select class="modal-select" id="newnote-parent">
-      <option value="">Top level (its own row on the home page)</option>
-    </select>
-    <div class="modal-actions">
-      <button class="modal-btn" onclick="closeNewNote()">Cancel</button>
-      <button class="modal-btn primary" onclick="submitNewNote()">Create &amp; open</button>
-    </div>
-  </div>
-</div>
 
 
 <div class="onboard-backdrop" id="onboard-backdrop">
@@ -740,10 +823,11 @@
     </div>
     <div class="ob-step" id="ob-step-2">
       <div class="ob-title">Pick your light</div>
-      <div class="ob-sub">Light or dark &mdash; you can toggle this anytime from the side panel.</div>
+      <div class="ob-sub">Light, dark, or Prism &mdash; you can change this anytime from the side panel.</div>
       <div class="ob-chips">
         <span class="ob-chip" id="ob-chip-light" onclick="obTheme('light')">Light</span>
         <span class="ob-chip" id="ob-chip-dark" onclick="obTheme('dark')">Dark</span>
+        <span class="ob-chip" id="ob-chip-prism" onclick="obTheme('prism')">Prism</span>
       </div>
       <div class="ob-actions">
         <span></span>
@@ -766,6 +850,17 @@
   </div>
 </div>
 
+<div class="greet-backdrop" id="greet-backdrop">
+  <div class="greet-card">
+    <div class="greet-title" id="greet-title">Good morning</div>
+    <div class="greet-sub" id="greet-sub">Here's what's worth your attention today.</div>
+    <div class="greet-list" id="greet-list"></div>
+    <div class="greet-actions">
+      <button class="ob-next" onclick="closeGreeting()">Let's start</button>
+    </div>
+  </div>
+</div>
+
 <script>
   /* ---------- demo reset: visit ?reset=1 once to wipe local state and see
      onboarding + seed data fresh, like a brand-new user (e.g. for recording). ---------- */
@@ -776,16 +871,15 @@
     window.history.replaceState({}, '', window.location.pathname);
   })();
 
-  /* ---------- theme ---------- */
+  /* ---------- theme: light / dark / prism (white base, rainbow glass hues) ---------- */
   function applyTheme() {
-    const dark = localStorage.getItem('hq_theme') === 'dark';
-    document.body.classList.toggle('dark', dark);
-    const btn = document.getElementById('theme-toggle');
-    if (btn) btn.classList.toggle('on', dark);
+    const mode = localStorage.getItem('hq_theme') || 'light';
+    document.body.classList.remove('dark', 'prism');
+    if (mode === 'dark' || mode === 'prism') document.body.classList.add(mode);
+    document.querySelectorAll('.theme-chip').forEach(el => el.classList.toggle('on', el.dataset.theme === mode));
   }
-  function toggleTheme() {
-    const dark = !document.body.classList.contains('dark');
-    localStorage.setItem('hq_theme', dark ? 'dark' : 'light');
+  function setTheme(mode) {
+    localStorage.setItem('hq_theme', mode);
     applyTheme();
   }
   applyTheme();
@@ -820,6 +914,12 @@
     applySidePanelPinned();
   }
   applySidePanelPinned();
+
+  /* ---------- keep the home-header clock ticking without a full re-render ---------- */
+  setInterval(function () {
+    const el = document.getElementById('home-clock');
+    if (el) el.textContent = nowLabel();
+  }, 30000);
 
   /* ---------- who's signed in: see boot() near the bottom, which handles
      /api/me plus loading the right workspace's data ---------- */
@@ -1067,7 +1167,8 @@
       pages: { title: 'Pages', sub: 'Everything in your workspace' },
       schedule: { title: 'Next few days', sub: 'Living timeline \u00b7 posting & delivery dates' },
       status: { title: 'Job status', sub: 'Across all jobs' },
-      priority: { title: 'What to work on today', sub: 'Ranked across open jobs & objects' }
+      priority: { title: 'What to work on today', sub: 'Ranked across open jobs & objects' },
+      calendar: { title: 'This week', sub: 'Live from Google Calendar' }
     };
   }
   let widgetLabels = defaultWidgetLabels();
@@ -1081,6 +1182,10 @@
     const l = widgetLabels[key] || d;
     return '<div class="widget-title" contenteditable spellcheck="false" oninput="setWidgetLabel(\'' + key + '\',\'title\', this.textContent)">' + esc(l.title) + '</div>' +
       '<div class="widget-sub" contenteditable spellcheck="false" oninput="setWidgetLabel(\'' + key + '\',\'sub\', this.textContent)">' + esc(l.sub) + '</div>';
+  }
+  function nowLabel() {
+    const d = new Date();
+    return d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) + ' \u00b7 ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   }
   function touchActivity() { localStorage.setItem('hq_last_active', String(Date.now())); }
   function timeAgo() {
@@ -1181,6 +1286,7 @@
   }
 
   let workspaceName = 'Your Workspace';
+  let currentUserName = '';
   function saveWorkspaceName(name) {
     workspaceName = name;
     if (currentWorkspaceId) {
@@ -1315,6 +1421,51 @@
     ).join('');
   }
 
+  /* ---------- live Google Calendar widget: real events, next 7 days ---------- */
+  let calendarState = { loaded: false, connected: false, reauthRequired: false, events: [] };
+  let calendarTimer = null;
+  function calendarHTML() {
+    const s = calendarState;
+    if (!s.loaded) return '<div class="widget-empty">Loading your calendar\u2026</div>';
+    if (!s.connected) {
+      return '<div class="widget-empty">' +
+        (s.reauthRequired ? 'Reconnect Google Calendar to see your real schedule here.' : 'Couldn\u2019t reach Google Calendar right now.') +
+        '</div>' +
+        (s.reauthRequired ? '<a class="cal-connect" href="/oauth/start">Connect calendar</a>' : '');
+    }
+    if (!s.events.length) return '<div class="widget-empty">Nothing on your calendar this week.</div>';
+    return s.events.map(ev => {
+      const start = ev.start ? new Date(ev.start) : null;
+      const when = !start ? '' : ev.allDay
+        ? fmtShort(start)
+        : fmtShort(start) + ' \u00b7 ' + start.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+      return '<div class="tl-item"><span class="tl-date">' + esc(when) + '</span>' +
+        '<span class="tl-label">' + esc(ev.summary) + '</span>' +
+        (ev.location ? '<span class="tl-cat">' + esc(ev.location) + '</span>' : '') + '</div>';
+    }).join('');
+  }
+  function loadCalendarWidget() {
+    fetch('/api/calendar/upcoming').then(r => r.ok ? r.json() : { connected: false, reauth_required: false, events: [] }).then(data => {
+      calendarState = {
+        loaded: true,
+        connected: !!data.connected,
+        reauthRequired: !!data.reauth_required,
+        events: data.events || [],
+      };
+      const body = document.getElementById('calendar-body');
+      if (body) body.innerHTML = calendarHTML();
+    }).catch(() => {
+      calendarState = { loaded: true, connected: false, reauthRequired: false, events: [] };
+      const body = document.getElementById('calendar-body');
+      if (body) body.innerHTML = calendarHTML();
+    });
+  }
+  function startCalendarPolling() {
+    loadCalendarWidget();
+    clearInterval(calendarTimer);
+    calendarTimer = setInterval(loadCalendarWidget, 5 * 60 * 1000);
+  }
+
   function orderedPagesForDisplay() {
     const byParent = {};
     const roots = [];
@@ -1341,6 +1492,46 @@
     localStorage.setItem('hq_collapsed_pages', JSON.stringify([...collapsedPages]));
     render();
   }
+
+  /* ---------- drag-and-drop page nesting: drag a row onto another to nest
+     it underneath (works on the home page list and the side panel list) ---------- */
+  let dragPageKey = null;
+  function pageDragStart(e, key) {
+    dragPageKey = key;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', key);
+  }
+  function pageDragOver(e, overKey) {
+    if (!dragPageKey || dragPageKey === overKey) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    e.currentTarget.classList.add('drop-target');
+  }
+  function pageDragLeave(e) {
+    e.currentTarget.classList.remove('drop-target');
+  }
+  function pageDrop(e, overKey) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drop-target');
+    if (!dragPageKey || dragPageKey === overKey) return;
+    const dragged = pages.find(x => x.key === dragPageKey);
+    const target = pages.find(x => x.key === overKey);
+    if (!dragged || !target) return;
+    // nesting is one level deep only (matches how the lists render) — you can
+    // only drop onto a top-level page, not onto something already nested
+    if (target.parent && pages.some(x => x.key === target.parent)) {
+      showToast('"' + target.label + '" is already nested \u2014 drop on a top-level page instead');
+      return;
+    }
+    dragged.parent = target.key;
+    savePages();
+    render();
+    showToast('Nested "' + dragged.label + '" under "' + target.label + '"');
+  }
+  function pageDragEnd(e) {
+    dragPageKey = null;
+    document.querySelectorAll('.drop-target').forEach(el => el.classList.remove('drop-target'));
+  }
   function renamePage(key, text) {
     const p = pages.find(x => x.key === key);
     if (!p) return;
@@ -1358,15 +1549,19 @@
   function homeHTML() {
     const pagesListHTML = orderedPagesForDisplay().map(entry => {
       const p = entry.page;
-      const isPinned = pinnedWidgets.some(w => w.sourceKey === p.key);
+      const pinned = pinnedWidgets.find(w => w.sourceKey === p.key);
       const collapsed = collapsedPages.has(p.key);
       const hideAsChild = entry.isChild && collapsedPages.has(entry.parentKey);
-      return '<div class="prow' + (entry.isChild ? ' prow-child' : '') + (hideAsChild ? ' collapsed-child' : '') + '" data-signal="' + (p.signal ? 1 : 0) + '" onclick="openPage(\'' + p.key + '\')">' +
+      return '<div class="prow' + (entry.isChild ? ' prow-child' : '') + (hideAsChild ? ' collapsed-child' : '') + '" data-signal="' + (p.signal ? 1 : 0) + '" draggable="true"' +
+        ' ondragstart="pageDragStart(event, \'' + p.key + '\')" ondragover="pageDragOver(event, \'' + p.key + '\')" ondragleave="pageDragLeave(event)" ondrop="pageDrop(event, \'' + p.key + '\')" ondragend="pageDragEnd(event)"' +
+        ' onclick="openPage(\'' + p.key + '\')">' +
         '<span class="prow-star' + (p.signal ? ' on' : '') + '" onclick="event.stopPropagation(); toggleSignal(\'' + p.key + '\')" title="Mark as signal">' + (p.signal ? '\u2605' : '\u2606') + '</span>' +
         (entry.hasChildren ? '<span class="prow-collapse' + (collapsed ? '' : ' open') + '" onclick="event.stopPropagation(); toggleCollapse(\'' + p.key + '\')" title="Show/hide subpages">\u25b6</span>' : (entry.isChild ? '<span class="prow-parent-hint">\u21b3</span>' : '')) +
         '<span class="prow-name" id="prowname-' + p.key + '" contenteditable spellcheck="false" onclick="event.stopPropagation()" oninput="renamePage(\'' + p.key + '\', this.textContent)">' + esc(p.label) + '</span>' +
         '<span class="prow-spacer"></span>' +
-        (isPinned ? '<span class="prow-pin-badge" title="Pinned to home dashboard">pinned</span>' : '') +
+        (pinned
+          ? '<span class="prow-pin-badge" onclick="event.stopPropagation(); openPinModalForWidget(\'' + pinned.id + '\')" title="Pinned to home &mdash; click to change view or unpin">pinned</span>'
+          : (p.type !== 'group' ? '<button class="prow-pin" onclick="event.stopPropagation(); openPinModal(\'' + p.key + '\')" title="Pin to home dashboard">+ pin</button>' : '')) +
         '<button class="prow-del" onclick="event.stopPropagation(); delPage(\'' + p.key + '\')" title="Delete">\u00d7</button>' +
         '</div>';
     }).join('') +
@@ -1376,8 +1571,7 @@
     return '<div class="home">' +
       '<div class="home-eyebrow">Workspace</div>' +
       '<div class="home-title" contenteditable spellcheck="false" oninput="saveWorkspaceName(this.textContent)">' + esc(workspaceName) + '</div>' +
-      '<div class="home-sub">' + pages.length + ' pages</div>' +
-      '<div class="home-freshness">&#9679; ' + timeAgo() + '</div>' +
+      '<div class="home-sub" id="home-clock">' + nowLabel() + '</div>' +
       '<div class="home-grid">' +
       '<div class="hg-pages page-list"><div class="hg-pages-header">' + widgetHeaderHTML('pages') + '</div>' + pagesListHTML + '</div>' +
       '<div class="hg-schedule widget-card">' +
@@ -1389,6 +1583,9 @@
       '<div class="hg-priority widget-card">' +
       widgetHeaderHTML('priority') +
       priorityHTML() + '</div>' +
+      '<div class="hg-calendar widget-card">' +
+      widgetHeaderHTML('calendar') +
+      '<div id="calendar-body">' + calendarHTML() + '</div></div>' +
       pinnedWidgetsHTML() +
       '</div></div>';
   }
@@ -1399,9 +1596,13 @@
       const p = entry.page;
       const collapsed = collapsedPages.has(p.key);
       const hideAsChild = entry.isChild && collapsedPages.has(entry.parentKey);
-      return '<div class="sp-page' + (hideAsChild ? ' collapsed-child' : '') + '" onclick="openPage(\'' + p.key + '\')">' +
+      const pinned = pinnedWidgets.some(w => w.sourceKey === p.key);
+      return '<div class="sp-page' + (hideAsChild ? ' collapsed-child' : '') + '" draggable="true"' +
+        ' ondragstart="pageDragStart(event, \'' + p.key + '\')" ondragover="pageDragOver(event, \'' + p.key + '\')" ondragleave="pageDragLeave(event)" ondrop="pageDrop(event, \'' + p.key + '\')" ondragend="pageDragEnd(event)"' +
+        ' onclick="openPage(\'' + p.key + '\')">' +
         (entry.hasChildren ? '<span class="sp-collapse' + (collapsed ? '' : ' open') + '" onclick="event.stopPropagation(); toggleCollapse(\'' + p.key + '\')">\u25b6</span>' : '') +
         '<span class="sp-page-name" id="spname-' + p.key + '" contenteditable spellcheck="false" onclick="event.stopPropagation()" oninput="renamePage(\'' + p.key + '\', this.textContent)">' + esc(p.label) + '</span>' +
+        (pinned ? '<span class="sp-page-pinned" title="Pinned to home dashboard">(home page)</span>' : '') +
         '</div>';
     }).join('');
   }
@@ -1410,8 +1611,8 @@
     const el = document.getElementById('crumb');
     if (view === 'home') { el.innerHTML = ''; return; }
     const p = pages.find(x => x.key === view);
-    el.innerHTML = '<span class="crumb-sep"> / </span><span class="crumb-cur">' + esc(p ? p.label : '') + '</span>' +
-      (p && p.type !== 'group' ? '<span class="crumb-pin" onclick="openPinModal(\'' + p.key + '\')" title="Pin this page to the home dashboard">+ pin to home</span>' : '');
+    el.innerHTML = '<span class="crumb-home" onclick="goHome()">Home</span>' +
+      '<span class="crumb-sep"> / </span><span class="crumb-cur">' + esc(p ? p.label : '') + '</span>';
   }
 
   /* =====================================================================
@@ -2070,28 +2271,12 @@
      link on both pages' rows). Opens straight into the new note on create.
      ===================================================================== */
   function openNewNote() {
-    const opts = pages.filter(p => p.type !== 'group')
-      .map(p => '<option value="' + p.key + '">' + esc(p.label) + '</option>').join('');
-    document.getElementById('newnote-parent').innerHTML = '<option value="">Top level</option>' + opts;
-    document.getElementById('newnote-name').value = '';
-    document.getElementById('newnote-type').value = 'doc';
-    document.getElementById('newnote-backdrop').classList.add('show');
-    setTimeout(() => document.getElementById('newnote-name').focus(), 0);
-  }
-  function closeNewNote() { document.getElementById('newnote-backdrop').classList.remove('show'); }
-  function submitNewNote() {
-    const nameEl = document.getElementById('newnote-name');
-    const name = nameEl.value.trim();
-    if (!name) { nameEl.focus(); return; }
-    const type = document.getElementById('newnote-type').value;
-    const parent = document.getElementById('newnote-parent').value || null;
-    const key = name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now().toString(36).slice(-4);
-    const page = type === 'doc'
-      ? { key: key, label: name, type: 'doc', parent: parent, blocks: [{ t: 'h2', html: name }] }
-      : { key: key, label: name, type: 'table', parent: parent, cols: ['Item', 'Status', 'Notes'], rows: [['', '', '']] };
-    pages.push(page);
+    // No modal, no questions \u2014 create a blank doc and drop straight into it.
+    // Rename it inline once you're in (same as any other page title).
+    const name = 'Untitled';
+    const key = 'note-' + Date.now().toString(36).slice(-6);
+    pages.push({ key: key, label: name, type: 'doc', parent: null, blocks: [{ t: 'h2', html: name }] });
     savePages();
-    closeNewNote();
     openPage(key);
   }
 
@@ -2099,9 +2284,12 @@
   function render() {
     renderCrumb();
     renderSidePanel();
+    const freshEl = document.getElementById('hdr-freshness');
+    if (freshEl) freshEl.textContent = timeAgo();
     const app = document.getElementById('app');
     if (view === 'home') {
       app.innerHTML = homeHTML();
+      startCalendarPolling();
     } else if (view === 'job-sheet') {
       app.innerHTML = jobSheetShellHTML();
       renderNav(); renderTable();
@@ -2114,6 +2302,7 @@
     } else {
       view = 'home'; localStorage.setItem('hq_view', 'home');
       app.innerHTML = homeHTML();
+      startCalendarPolling();
     }
   }
 
@@ -2128,15 +2317,40 @@
   let pinnedWidgets = [];
   let pinModalKey = null;
   let pinModalType = 'visual';
+  let pinModalEditId = null;
   function openPinModal(key) {
     pinModalKey = key;
+    pinModalEditId = null;
     pinModalType = 'visual';
     const p = pages.find(x => x.key === key);
     document.getElementById('pin-label').value = p ? p.label : '';
+    document.getElementById('pin-modal-title').textContent = 'Pin to home dashboard';
+    document.getElementById('pin-modal-hint').textContent = 'Surface this page as a live widget on your home screen \u2014 pick how it should look.';
+    document.getElementById('pin-modal-submit').textContent = 'Pin to home';
+    document.getElementById('pin-modal-unpin').style.display = 'none';
     document.querySelectorAll('#pin-type-grid .pin-type-opt').forEach(el => el.classList.toggle('on', el.dataset.type === pinModalType));
     document.getElementById('pin-backdrop').classList.add('show');
   }
-  function closePinModal() { document.getElementById('pin-backdrop').classList.remove('show'); }
+  function openPinModalForWidget(id) {
+    const w = pinnedWidgets.find(x => x.id === id);
+    if (!w) return;
+    pinModalKey = w.sourceKey;
+    pinModalEditId = id;
+    pinModalType = w.type;
+    document.getElementById('pin-label').value = w.label;
+    document.getElementById('pin-modal-title').textContent = 'Change widget view';
+    document.getElementById('pin-modal-hint').textContent = 'Pick a different structure for this widget \u2014 it stays pinned in the same spot.';
+    document.getElementById('pin-modal-submit').textContent = 'Save view';
+    document.getElementById('pin-modal-unpin').style.display = 'inline-block';
+    document.querySelectorAll('#pin-type-grid .pin-type-opt').forEach(el => el.classList.toggle('on', el.dataset.type === pinModalType));
+    document.getElementById('pin-backdrop').classList.add('show');
+  }
+  function unpinFromModal() {
+    if (!pinModalEditId) return;
+    unpinWidget(pinModalEditId);
+    closePinModal();
+  }
+  function closePinModal() { document.getElementById('pin-backdrop').classList.remove('show'); pinModalEditId = null; }
   function choosePinType(type) {
     pinModalType = type;
     document.querySelectorAll('#pin-type-grid .pin-type-opt').forEach(el => el.classList.toggle('on', el.dataset.type === type));
@@ -2144,6 +2358,15 @@
   function submitPin() {
     if (!pinModalKey) return;
     const label = document.getElementById('pin-label').value.trim();
+    if (pinModalEditId) {
+      const w = pinnedWidgets.find(x => x.id === pinModalEditId);
+      if (w) { w.type = pinModalType; w.label = label || w.label; }
+      saveWorkspaceData();
+      closePinModal();
+      render();
+      showToast('Widget view updated');
+      return;
+    }
     pinnedWidgets.push({ id: 'pin-' + Date.now().toString(36).slice(-6), sourceKey: pinModalKey, type: pinModalType, label: label || 'Widget' });
     saveWorkspaceData();
     closePinModal();
@@ -2167,9 +2390,13 @@
       const body = !src ? '<div class="widget-empty">Source page was deleted.</div>' :
         w.type === 'visual' ? pinnedVisualHTML(src) :
         w.type === 'timeline' ? pinnedTimelineHTML(src) : pinnedSheetHTML(src);
-      return '<div class="widget-card hg-pinned">' +
-        '<button class="pin-unpin" onclick="unpinWidget(\'' + w.id + '\')" title="Unpin from home">Unpin</button>' +
-        '<div class="widget-title" contenteditable spellcheck="false" oninput="renamePinnedWidget(\'' + w.id + '\', this.textContent)">' + esc(w.label) + '</div>' +
+      return '<div class="widget-card hg-pinned' + (src ? ' hg-clickable' : '') + '"' +
+        (src ? ' onclick="openPage(\'' + src.key + '\')" title="Open ' + esc(src.label) + '"' : '') + '>' +
+        '<div class="pin-actions">' +
+        '<button class="pin-change" onclick="event.stopPropagation(); openPinModalForWidget(\'' + w.id + '\')" title="Change this widget\'s view">Change view</button>' +
+        '<button class="pin-unpin" onclick="event.stopPropagation(); unpinWidget(\'' + w.id + '\')" title="Unpin from home">Unpin</button>' +
+        '</div>' +
+        '<div class="widget-title" contenteditable spellcheck="false" onclick="event.stopPropagation()" oninput="renamePinnedWidget(\'' + w.id + '\', this.textContent)">' + esc(w.label) + '</div>' +
         '<div class="widget-sub">' + (src ? esc(src.label) : 'Missing page') + '</div>' +
         body + '</div>';
     }).join('');
@@ -2196,12 +2423,12 @@
         .filter(x => x.date).sort((a, b) => a.date - b.date).slice(0, 8);
       if (!items.length) return '<div class="widget-empty">Nothing dated yet.</div>';
       return items.map(it => '<div class="tl-item"><span class="tl-date">' + fmtShort(it.date) + '</span>' +
-        '<span class="tl-label">' + esc(it.label || '') + '</span></div>').join('');
+        '<span class="tl-label">' + esc(it.label || '') + '</span><span class="tl-cat">' + esc(p.label) + '</span></div>').join('');
     }
     if (p.type === 'doc' && p.blocks && p.blocks.length) {
       const heads = p.blocks.filter(b => b.t === 'h2' || b.t === 'h3').slice(0, 8);
       if (!heads.length) return '<div class="widget-empty">Add some headings on this page to show a timeline.</div>';
-      return heads.map(b => '<div class="tl-item"><span class="tl-label">' + esc((b.html || '').replace(/<[^>]+>/g, '')) + '</span></div>').join('');
+      return heads.map(b => '<div class="tl-item"><span class="tl-label">' + esc((b.html || '').replace(/<[^>]+>/g, '')) + '</span><span class="tl-cat">' + esc(p.label) + '</span></div>').join('');
     }
     return '<div class="widget-empty">No timeline available.</div>';
   }
@@ -2231,8 +2458,10 @@
     document.getElementById('ob-step-' + obStep).classList.add('on');
     if (obStep === 1) setTimeout(() => document.getElementById('ob-name-input').focus(), 0);
     if (obStep === 2) {
-      document.getElementById('ob-chip-light').classList.toggle('on', !document.body.classList.contains('dark'));
-      document.getElementById('ob-chip-dark').classList.toggle('on', document.body.classList.contains('dark'));
+      const mode = localStorage.getItem('hq_theme') || 'light';
+      document.getElementById('ob-chip-light').classList.toggle('on', mode === 'light');
+      document.getElementById('ob-chip-dark').classList.toggle('on', mode === 'dark');
+      document.getElementById('ob-chip-prism').classList.toggle('on', mode === 'prism');
     }
   }
   function obCreateWorkspace() {
@@ -2244,10 +2473,10 @@
     obGoto(2);
   }
   function obTheme(mode) {
-    localStorage.setItem('hq_theme', mode);
-    applyTheme();
+    setTheme(mode);
     document.getElementById('ob-chip-light').classList.toggle('on', mode === 'light');
     document.getElementById('ob-chip-dark').classList.toggle('on', mode === 'dark');
+    document.getElementById('ob-chip-prism').classList.toggle('on', mode === 'prism');
   }
   function obFinish() {
     localStorage.setItem('hq_onboarded', '1');
@@ -2259,8 +2488,45 @@
     openImport(source);
   }
   function maybeOnboard() {
-    if (localStorage.getItem('hq_onboarded')) return;
+    if (localStorage.getItem('hq_onboarded')) { maybeGreet(); return; }
     document.getElementById('onboard-backdrop').classList.add('show');
+  }
+
+  /* ---------- daily greeting: "good morning/afternoon/evening" + a quick
+     look at whatever's top-priority right now, shown once per calendar day
+     so opening HQ tells you something instead of just sitting there ---------- */
+  function greetingPhrase() {
+    const h = new Date().getHours();
+    const first = (currentUserName || '').trim().split(' ')[0];
+    const time = h < 5 ? 'Up late' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+    return time + (first ? ', ' + first : '');
+  }
+  function maybeGreet() {
+    const today = new Date().toISOString().slice(0, 10);
+    if (localStorage.getItem('hq_greeted_date') === today) return;
+    localStorage.setItem('hq_greeted_date', today);
+    document.getElementById('greet-title').textContent = greetingPhrase();
+    const items = priorityItems();
+    const listEl = document.getElementById('greet-list');
+    const subEl = document.getElementById('greet-sub');
+    if (!items.length) {
+      subEl.textContent = "Nothing urgent on the board \u2014 clear runway today.";
+      listEl.innerHTML = '';
+    } else {
+      subEl.textContent = items.length === 1 ? 'One thing stands out as top priority.' : items.length + ' things stand out as top priority.';
+      listEl.innerHTML = items.slice(0, 6).map(it => {
+        const badge = it.rank === 10 ? 'High' : it.rank === 100 ? 'Low' : it.rank === 50 ? 'Priority' : '#' + it.rank;
+        return '<div class="greet-item" onclick="closeGreeting(); goHome();">' +
+          '<span class="greet-rank">' + badge + '</span>' +
+          '<span class="greet-name">' + esc(it.name || '') + '</span>' +
+          '<span class="greet-meta">' + esc(it.meta || '') + '</span>' +
+          '</div>';
+      }).join('');
+    }
+    document.getElementById('greet-backdrop').classList.add('show');
+  }
+  function closeGreeting() {
+    document.getElementById('greet-backdrop').classList.remove('show');
   }
 
   /* =====================================================================
@@ -2272,6 +2538,7 @@
   function boot() {
     fetch('/api/me').then(r => r.ok ? r.json() : null).then(me => {
       if (!me) { render(); return; } // not signed in; server already redirects index.html -> login.html
+      currentUserName = me.name || '';
       document.getElementById('who').textContent = me.name || me.email || '';
       document.getElementById('signout-btn').style.display = '';
       document.getElementById('hdr-who').textContent = me.name || me.email || '';
@@ -2321,6 +2588,7 @@
       maybeLoadLolaDemo(); // also sets hq_onboarded, so maybeOnboard() below is a no-op when it fires
       render();
       if (isInitialBoot) maybeOnboard();
+      else showToast('Switched to ' + workspaceName);
     });
   }
 
