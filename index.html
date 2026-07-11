@@ -177,7 +177,10 @@
   .cal-connect:hover { background: var(--hover); }
   .tl-item { display: flex; align-items: baseline; gap: 9px; padding: 5px 0; border-bottom: 1px solid var(--line-soft); font-size: 11.5px; }
   .tl-item:last-child { border-bottom: none; }
-  .tl-date { font-weight: 700; color: var(--ink); flex-shrink: 0; width: 52px; }
+  .tl-date {
+    font-weight: 700; color: var(--ink); flex-shrink: 0; margin-left: auto;
+    text-align: right; white-space: nowrap; padding-left: 12px;
+  }
   .tl-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--gray-1); }
   .tl-cat { font-size: 9.5px; color: var(--gray-2); flex-shrink: 0; }
   .st-row { display: flex; align-items: center; gap: 8px; font-size: 11px; padding: 4px 0; }
@@ -1539,9 +1542,10 @@
       const when = !start ? '' : ev.allDay
         ? fmtShort(start)
         : fmtShort(start) + ' \u00b7 ' + start.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-      return '<div class="tl-item"><span class="tl-date">' + esc(when) + '</span>' +
+      return '<div class="tl-item">' +
         '<span class="tl-label">' + esc(ev.summary) + '</span>' +
-        (ev.location ? '<span class="tl-cat">' + esc(ev.location) + '</span>' : '') + '</div>';
+        (ev.location ? '<span class="tl-cat">' + esc(ev.location) + '</span>' : '') +
+        '<span class="tl-date">' + esc(when) + '</span></div>';
     }).join('');
   }
   function loadCalendarWidget() {
