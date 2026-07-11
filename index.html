@@ -1502,6 +1502,7 @@
     if (!s.connected) {
       return '<div class="widget-empty">' +
         (s.reauthRequired ? 'Reconnect Google Calendar to see your real schedule here.' : 'Couldn\u2019t reach Google Calendar right now.') +
+        (s.error ? '<br><span style="opacity:.6;font-size:10px;">' + esc(s.error) + '</span>' : '') +
         '</div>' +
         (s.reauthRequired ? '<a class="cal-connect" href="/oauth/start">Connect calendar</a>' : '');
     }
@@ -1517,17 +1518,18 @@
     }).join('');
   }
   function loadCalendarWidget() {
-    fetch('/api/calendar/upcoming').then(r => r.ok ? r.json() : { connected: false, reauth_required: false, events: [] }).then(data => {
+    fetch('/api/calendar/upcoming').then(r => r.ok ? r.json() : { connected: false, reauth_required: false, error: 'HTTP ' + r.status + ' from /api/calendar/upcoming', events: [] }).then(data => {
       calendarState = {
         loaded: true,
         connected: !!data.connected,
         reauthRequired: !!data.reauth_required,
+        error: data.error || null,
         events: data.events || [],
       };
       const body = document.getElementById('calendar-body');
       if (body) body.innerHTML = calendarHTML();
-    }).catch(() => {
-      calendarState = { loaded: true, connected: false, reauthRequired: false, events: [] };
+    }).catch(err => {
+      calendarState = { loaded: true, connected: false, reauthRequired: false, error: 'fetch failed: ' + err, events: [] };
       const body = document.getElementById('calendar-body');
       if (body) body.innerHTML = calendarHTML();
     });

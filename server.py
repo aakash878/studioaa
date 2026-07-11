@@ -414,13 +414,13 @@ def _refresh_access_token(session):
 
 
 def _fetch_calendar_events(session):
-    """Returns (connected: bool, reauth_required: bool, events: list). Refreshes
-    the access token first if it's missing or about to expire."""
+    """Returns (connected: bool, reauth_required: bool, events: list, error: str|None).
+    Refreshes the access token first if it's missing or about to expire."""
     if not session.get("access_token") or not session.get("refresh_token"):
-        return False, True, []
+        return False, True, [], "no access_token/refresh_token on this session (never connected, or signed in before calendar access was requested)"
     if not session.get("token_expiry") or time.time() > session["token_expiry"] - 60:
         if not _refresh_access_token(session):
-            return False, True, []
+            return False, True, [], "token refresh failed (refresh_token missing/expired/revoked)"
 
     now = datetime.now(timezone.utc)
     time_min = now.isoformat()
@@ -438,11 +438,14 @@ def _fetch_calendar_events(session):
         with urllib.request.urlopen(req, timeout=20) as resp:
             data = json.loads(resp.read())
     except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", "replace")[:500]
+        print(f"[calendar] HTTPError {e.code} from Google Calendar API: {body}", flush=True)
         if e.code in (401, 403):
-            return False, True, []
-        return False, False, []
-    except urllib.error.URLError:
-        return False, False, []
+            return False, True, [], f"HTTP {e.code}: {body}"
+        return False, False, [], f"HTTP {e.code}: {body}"
+    except urllib.error.URLError as e:
+        print(f"[calendar] URLError reaching Google Calendar API: {e}", flush=True)
+        return False, False, [], f"network error: {e}"
 
     events = []
     for item in data.get("items", []):
@@ -457,7 +460,7 @@ def _fetch_calendar_events(session):
             "allDay": all_day,
             "location": item.get("location"),
         })
-    return True, False, events
+    return True, False, events, None
 
 
 def _session_from_cookie(handler):
@@ -519,10 +522,11 @@ class Handler(SimpleHTTPRequestHandler):
             session = self._require_session()
             if not session:
                 return
-            connected, reauth_required, events = _fetch_calendar_events(session)
+            connected, reauth_required, events, error = _fetch_calendar_events(session)
             self._reply(200, {
                 "connected": connected,
                 "reauth_required": reauth_required,
+                "error": error,
                 "events": events,
             })
             return
