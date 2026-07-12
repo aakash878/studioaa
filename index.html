@@ -1783,6 +1783,8 @@
     if (view === key) {
       const pt = document.getElementById('pt-title');
       if (pt && pt.textContent !== text) pt.textContent = text;
+      const crumbEl = document.querySelector('#crumb .crumb-cur');
+      if (crumbEl && crumbEl.textContent !== text) crumbEl.textContent = text;
     }
   }
   let pagesListHTMLCache = '';
@@ -2548,7 +2550,7 @@
   }
   function docHTML(blocks) {
     return blocks.map((b, bi) => {
-      if (b.t === 'h2') return '<div class="doc-h2" contenteditable onfocus="clearBlockPlaceholder(this)" oninput="docSetBlock(' + bi + ', this.innerHTML)">' + b.html + '</div>';
+      if (b.t === 'h2') return '<div class="doc-h2" contenteditable onfocus="clearBlockPlaceholder(this)" oninput="docSetHeading(' + bi + ', this)">' + b.html + '</div>';
       if (b.t === 'h3') return '<div class="doc-h3" contenteditable onfocus="clearBlockPlaceholder(this)" oninput="docSetBlock(' + bi + ', this.innerHTML)">' + b.html + '</div>';
       if (b.t === 'p') return '<div class="doc-p" contenteditable onfocus="clearBlockPlaceholder(this)" oninput="docSetBlock(' + bi + ', this.innerHTML)">' + b.html + '</div>';
       if (b.t === 'hr') return '<hr class="doc-hr">';
@@ -2561,6 +2563,15 @@
   }
   function renderDoc() { document.getElementById('doc-body').innerHTML = docHTML(curPage().blocks); }
   function docSetBlock(bi, html) { curPage().blocks[bi].html = html; savePages(); }
+  // The first heading in a doc doubles as its title everywhere else in the
+  // app (home list, side panel, breadcrumb, nav) -- so typing over the
+  // "Untitled" placeholder heading renames the page itself instead of
+  // leaving a stale "Untitled" label behind that you'd have to fix by hand.
+  function docSetHeading(bi, el) {
+    curPage().blocks[bi].html = el.innerHTML;
+    if (bi === 0) renamePage(view, el.textContent);
+    else savePages();
+  }
   function docSetItem(bi, pathStr, html) {
     const r = itemRef(curPage().blocks[bi].items, pathStr.split('.').map(Number));
     r.arr[r.idx].html = html; savePages();
