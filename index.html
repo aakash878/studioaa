@@ -2418,25 +2418,11 @@
         '<span class="cat-name" id="pagenav-' + p.key + '">' + esc(p.label) + '</span></div>';
     }).join('') + '<div class="cat-add" onclick="goHome()">\u2190 Home</div>';
   }
-  // Only worth showing the nav when the current page actually has other
-  // pages to jump to right there (it's a subpage with siblings/a parent, or
-  // it has subpages of its own) — a lone new note has nothing to navigate to,
-  // so it stays a plain full-width page instead of sprouting a sidebar.
-  function pageHasNavContext(key) {
-    const p = pages.find(x => x.key === key);
-    if (!p) return false;
-    if (p.parent && pages.some(x => x.key === p.parent)) return true;
-    return pages.some(x => x.parent === p.key);
-  }
+  // Every standalone page always gets the left nav (Home + every other page
+  // + subpages) so you can jump anywhere without going back to the home
+  // screen first — consistent across every page, not just ones with a
+  // parent/child relationship.
   function pageTableShellHTML() {
-    if (!pageHasNavContext(view)) {
-      return '<main style="padding:28px 32px 80px;">' +
-        '<div class="page-title" id="pt-title" contenteditable spellcheck="false" onkeydown="return blurOnEnter(event)" oninput="renamePage(view, this.textContent)"></div><div class="page-sub" id="pt-sub"></div>' +
-        '<div id="pt-filter-bar-slot"></div>' +
-        '<div class="table-wrap"><table id="pt-tbl"><thead id="pt-thead"></thead><tbody id="pt-tbody"></tbody></table></div>' +
-        '<div class="add-row" onclick="ptAddRow()">+ New</div>' +
-        '</main>';
-    }
     return '<div class="shell"><nav id="page-nav">' + pagesNavHTML() + '</nav><main style="padding:28px 32px 80px;">' +
       '<div class="page-title" id="pt-title" contenteditable spellcheck="false" onkeydown="return blurOnEnter(event)" oninput="renamePage(view, this.textContent)"></div><div class="page-sub" id="pt-sub"></div>' +
       '<div id="pt-filter-bar-slot"></div>' +
@@ -2513,7 +2499,6 @@
      same way — "+ Add section" / "+ add item" at every level.
      ===================================================================== */
   function docShellHTML() {
-    if (!pageHasNavContext(view)) return '<main class="doc"><div id="doc-body"></div></main>';
     return '<div class="shell"><nav id="page-nav">' + pagesNavHTML() + '</nav><main class="doc"><div id="doc-body"></div></main></div>';
   }
   function itemRef(items, path) {
