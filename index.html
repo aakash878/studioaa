@@ -163,37 +163,23 @@
   .home-title[contenteditable]:hover, .home-title[contenteditable]:focus { background: var(--hover); }
   .home-sub { font-size: 11.5px; color: var(--gray-2); opacity: .55; margin-bottom: 20px; margin-left: 34px; }
 
-  /* ---------- home dashboard grid: draggable/resizable bento cards ---------- */
+  /* ---------- home dashboard grid: reorderable/resizable bento cards ---------- */
   .home-grid { display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: min-content; grid-auto-flow: row dense; gap: 16px; }
   .dash-card { position: relative; grid-column: span 1; }
   .dash-card.dash-full { grid-column: 1 / 3; }
-  .dash-card-size {
-    position: absolute; top: -9px; right: -9px; width: 22px; height: 22px; border-radius: 50%;
+  .dash-card-controls {
+    position: absolute; top: -9px; right: -9px; display: flex; gap: 6px;
+    opacity: 0; transition: opacity .15s ease; z-index: 2;
+  }
+  .dash-card:hover .dash-card-controls { opacity: 1; }
+  .dash-ctrl-btn {
+    width: 22px; height: 22px; border-radius: 50%;
     border: 1px solid var(--line); background: var(--surface); color: var(--gray-2); font-size: 12px;
     line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center;
-    opacity: 0; transition: opacity .15s ease; z-index: 2;
   }
-  .dash-card:hover .dash-card-size { opacity: 1; }
-  .dash-card-size:hover { background: var(--hover); color: var(--ink); }
-  .dash-resize-handle {
-    position: absolute; bottom: 4px; right: 4px; width: 18px; height: 18px;
-    cursor: ew-resize; opacity: 0; transition: opacity .15s ease; z-index: 2;
-  }
-  .dash-card:hover .dash-resize-handle { opacity: .55; }
-  .dash-resize-handle:hover { opacity: 1; }
-  .dash-resize-handle::before {
-    content: ''; position: absolute; right: 3px; bottom: 3px; width: 8px; height: 8px;
-    border-right: 2px solid var(--gray-2); border-bottom: 2px solid var(--gray-2); border-radius: 0 0 3px 0;
-  }
-  .dash-card.resizing { transition: none; }
-  .cal-refresh {
-    position: absolute; top: -9px; right: 19px; width: 22px; height: 22px; border-radius: 50%;
-    border: 1px solid var(--line); background: var(--surface); color: var(--gray-2); font-size: 13px;
-    line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center;
-    opacity: 0; transition: opacity .15s ease; z-index: 2;
-  }
-  .dash-card:hover .cal-refresh { opacity: 1; }
-  .cal-refresh:hover { background: var(--hover); color: var(--ink); }
+  .dash-ctrl-btn:hover { background: var(--hover); color: var(--ink); }
+  .dash-ctrl-btn:disabled { opacity: .35; cursor: default; }
+  .dash-ctrl-btn:disabled:hover { background: var(--surface); color: var(--gray-2); }
   .cal-refresh.spinning { animation: cal-spin .6s linear; color: var(--accent); }
   @keyframes cal-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   .cal-select {
@@ -307,7 +293,6 @@
   .prow.drop-target, .sp-page.drop-target {
     box-shadow: inset 0 0 0 1.5px rgba(196,201,209,.9); background: rgba(196,201,209,.14); border-radius: 6px;
   }
-  .dash-card.drop-target { box-shadow: inset 0 0 0 2px rgba(196,201,209,.9); border-radius: 22px; }
   .prow-collapse-spacer { width: 12px; flex-shrink: 0; }
   .prow-name { flex: 0 1 auto; max-width: 70%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .prow-name[contenteditable] { outline: none; cursor: text; }
@@ -2847,92 +2832,36 @@
     if (key === 'status') return '<div class="hg-status widget-card">' + widgetHeaderHTML('status') + statusHTML() + '</div>';
     if (key === 'priority') return '<div class="hg-priority widget-card">' + widgetHeaderHTML('priority') + priorityHTML() + '</div>';
     if (key === 'calendar') return '<div class="hg-calendar widget-card">' +
-      '<button class="cal-refresh" id="cal-refresh-btn" onclick="event.stopPropagation(); refreshCalendarNow()" title="Refresh now">\u21bb</button>' +
       '<select class="cal-select" id="cal-select" onclick="event.stopPropagation()" onchange="onCalendarSelectChange(this)">' + calendarSelectOptionsHTML() + '</select>' +
       widgetHeaderHTML('calendar') + '<div id="calendar-body">' + calendarHTML() + '</div></div>';
     const w = pinnedWidgets.find(x => x.id === key);
     return w ? pinnedWidgetCardHTML(w) : '';
   }
   function dashboardCardsHTML() {
-    return orderedCardKeys().map(key => {
+    const order = orderedCardKeys();
+    return order.map((key, i) => {
       const size = cardSize(key);
-      return '<div class="dash-card dash-' + size + '" draggable="true"' +
-        ' ondragstart="dashDragStart(event,\'' + key + '\')" ondragover="dashDragOver(event,\'' + key + '\')" ondragleave="dashDragLeave(event)" ondrop="dashDrop(event,\'' + key + '\')" ondragend="dashDragEnd(event)">' +
-        '<button class="dash-card-size" onclick="event.stopPropagation(); toggleCardSize(\'' + key + '\')" title="' + (size === 'full' ? 'Shrink to half width' : 'Expand to full width') + '">' + (size === 'full' ? '\u2921' : '\u2922') + '</button>' +
-        '<div class="dash-resize-handle" draggable="false" ondragstart="return false" onmousedown="dashResizeStart(event,\'' + key + '\')" title="Drag to resize"></div>' +
+      const isCal = key === 'calendar';
+      return '<div class="dash-card dash-' + size + '">' +
+        '<div class="dash-card-controls">' +
+        (isCal ? '<button class="dash-ctrl-btn cal-refresh" id="cal-refresh-btn" onclick="event.stopPropagation(); refreshCalendarNow()" title="Refresh now">\u21bb</button>' : '') +
+        '<button class="dash-ctrl-btn" onclick="event.stopPropagation(); moveCard(\'' + key + '\', -1)" title="Move up"' + (i === 0 ? ' disabled' : '') + '>\u2191</button>' +
+        '<button class="dash-ctrl-btn" onclick="event.stopPropagation(); moveCard(\'' + key + '\', 1)" title="Move down"' + (i === order.length - 1 ? ' disabled' : '') + '>\u2193</button>' +
+        '<button class="dash-ctrl-btn" onclick="event.stopPropagation(); toggleCardSize(\'' + key + '\')" title="' + (size === 'full' ? 'Compress' : 'Expand') + '">' + (size === 'full' ? '\u2921' : '\u2922') + '</button>' +
+        '</div>' +
         cardInnerHTML(key) + '</div>';
     }).join('');
   }
-  let dashResizeKey = null;
-  let dashResizeStartX = 0;
-  let dashResizeStartSize = 'half';
-  let dashResizeEl = null;
-  function dashResizeStart(e, key) {
-    e.preventDefault();
-    e.stopPropagation();
-    dashResizeKey = key;
-    dashResizeStartX = e.clientX;
-    dashResizeStartSize = cardSize(key);
-    dashResizeEl = e.currentTarget.closest('.dash-card');
-    if (dashResizeEl) dashResizeEl.classList.add('resizing');
-    document.addEventListener('mousemove', dashResizeMove);
-    document.addEventListener('mouseup', dashResizeEnd);
-  }
-  function dashResizeMove(e) {
-    if (!dashResizeKey || !dashResizeEl) return;
-    const dx = e.clientX - dashResizeStartX;
-    const threshold = 70;
-    let target = dashResizeStartSize;
-    if (dashResizeStartSize === 'half' && dx > threshold) target = 'full';
-    if (dashResizeStartSize === 'full' && dx < -threshold) target = 'half';
-    if (cardSize(dashResizeKey) !== target) {
-      dashboardSizes[dashResizeKey] = target;
-      dashResizeEl.classList.toggle('dash-full', target === 'full');
-      dashResizeEl.classList.toggle('dash-half', target === 'half');
-      const btn = dashResizeEl.querySelector('.dash-card-size');
-      if (btn) {
-        btn.textContent = target === 'full' ? '\u2921' : '\u2922';
-        btn.title = target === 'full' ? 'Shrink to half width' : 'Expand to full width';
-      }
-    }
-  }
-  function dashResizeEnd(e) {
-    document.removeEventListener('mousemove', dashResizeMove);
-    document.removeEventListener('mouseup', dashResizeEnd);
-    if (dashResizeEl) dashResizeEl.classList.remove('resizing');
-    if (dashResizeKey) { saveWorkspaceData(); render(); }
-    dashResizeKey = null;
-    dashResizeEl = null;
-  }
-  let dashDragKey = null;
-  function dashDragStart(e, key) {
-    dashDragKey = key;
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', key);
-  }
-  function dashDragOver(e, overKey) {
-    if (!dashDragKey || dashDragKey === overKey) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    e.currentTarget.classList.add('drop-target');
-  }
-  function dashDragLeave(e) { e.currentTarget.classList.remove('drop-target'); }
-  function dashDrop(e, overKey) {
-    e.preventDefault();
-    e.currentTarget.classList.remove('drop-target');
-    if (!dashDragKey || dashDragKey === overKey) return;
+  function moveCard(key, dir) {
     const order = orderedCardKeys();
-    const from = order.indexOf(dashDragKey);
+    const from = order.indexOf(key);
+    const to = from + dir;
+    if (from === -1 || to < 0 || to >= order.length) return;
     order.splice(from, 1);
-    const to = order.indexOf(overKey);
-    order.splice(to, 0, dashDragKey);
+    order.splice(to, 0, key);
     dashboardOrder = order;
     saveWorkspaceData();
     render();
-  }
-  function dashDragEnd(e) {
-    dashDragKey = null;
-    document.querySelectorAll('.dash-card.drop-target').forEach(el => el.classList.remove('drop-target'));
   }
   function pinnedVisualHTML(p) {
     if (p.type === 'table' && p.rows && p.rows.length) {
