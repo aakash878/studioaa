@@ -175,6 +175,17 @@
   }
   .dash-card:hover .dash-card-size { opacity: 1; }
   .dash-card-size:hover { background: var(--hover); color: var(--ink); }
+  .dash-resize-handle {
+    position: absolute; bottom: 4px; right: 4px; width: 18px; height: 18px;
+    cursor: ew-resize; opacity: 0; transition: opacity .15s ease; z-index: 2;
+  }
+  .dash-card:hover .dash-resize-handle { opacity: .55; }
+  .dash-resize-handle:hover { opacity: 1; }
+  .dash-resize-handle::before {
+    content: ''; position: absolute; right: 3px; bottom: 3px; width: 8px; height: 8px;
+    border-right: 2px solid var(--gray-2); border-bottom: 2px solid var(--gray-2); border-radius: 0 0 3px 0;
+  }
+  .dash-card.resizing { transition: none; }
   .cal-refresh {
     position: absolute; top: -9px; right: 19px; width: 22px; height: 22px; border-radius: 50%;
     border: 1px solid var(--line); background: var(--surface); color: var(--gray-2); font-size: 13px;
@@ -2766,8 +2777,50 @@
       return '<div class="dash-card dash-' + size + '" draggable="true"' +
         ' ondragstart="dashDragStart(event,\'' + key + '\')" ondragover="dashDragOver(event,\'' + key + '\')" ondragleave="dashDragLeave(event)" ondrop="dashDrop(event,\'' + key + '\')" ondragend="dashDragEnd(event)">' +
         '<button class="dash-card-size" onclick="event.stopPropagation(); toggleCardSize(\'' + key + '\')" title="' + (size === 'full' ? 'Shrink to half width' : 'Expand to full width') + '">' + (size === 'full' ? '\u2921' : '\u2922') + '</button>' +
+        '<div class="dash-resize-handle" draggable="false" ondragstart="return false" onmousedown="dashResizeStart(event,\'' + key + '\')" title="Drag to resize"></div>' +
         cardInnerHTML(key) + '</div>';
     }).join('');
+  }
+  let dashResizeKey = null;
+  let dashResizeStartX = 0;
+  let dashResizeStartSize = 'half';
+  let dashResizeEl = null;
+  function dashResizeStart(e, key) {
+    e.preventDefault();
+    e.stopPropagation();
+    dashResizeKey = key;
+    dashResizeStartX = e.clientX;
+    dashResizeStartSize = cardSize(key);
+    dashResizeEl = e.currentTarget.closest('.dash-card');
+    if (dashResizeEl) dashResizeEl.classList.add('resizing');
+    document.addEventListener('mousemove', dashResizeMove);
+    document.addEventListener('mouseup', dashResizeEnd);
+  }
+  function dashResizeMove(e) {
+    if (!dashResizeKey || !dashResizeEl) return;
+    const dx = e.clientX - dashResizeStartX;
+    const threshold = 70;
+    let target = dashResizeStartSize;
+    if (dashResizeStartSize === 'half' && dx > threshold) target = 'full';
+    if (dashResizeStartSize === 'full' && dx < -threshold) target = 'half';
+    if (cardSize(dashResizeKey) !== target) {
+      dashboardSizes[dashResizeKey] = target;
+      dashResizeEl.classList.toggle('dash-full', target === 'full');
+      dashResizeEl.classList.toggle('dash-half', target === 'half');
+      const btn = dashResizeEl.querySelector('.dash-card-size');
+      if (btn) {
+        btn.textContent = target === 'full' ? '\u2921' : '\u2922';
+        btn.title = target === 'full' ? 'Shrink to half width' : 'Expand to full width';
+      }
+    }
+  }
+  function dashResizeEnd(e) {
+    document.removeEventListener('mousemove', dashResizeMove);
+    document.removeEventListener('mouseup', dashResizeEnd);
+    if (dashResizeEl) dashResizeEl.classList.remove('resizing');
+    if (dashResizeKey) { saveWorkspaceData(); render(); }
+    dashResizeKey = null;
+    dashResizeEl = null;
   }
   let dashDragKey = null;
   function dashDragStart(e, key) {
