@@ -627,6 +627,16 @@
   .prow:hover .prow-collapse, .sp-page:hover .sp-collapse, .prow-collapse.open, .sp-collapse.open { opacity: .85; }
   .prow-collapse.open, .sp-collapse.open { transform: rotate(90deg); }
   .prow.collapsed-child, .sp-page.collapsed-child { display: none; }
+  .cat-collapse {
+    cursor: pointer; color: var(--gray-2); font-size: 9px; width: 12px; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    opacity: .3; transition: transform .15s, opacity .15s;
+  }
+  .cat:hover .cat-collapse, .cat-collapse.open { opacity: .9; }
+  .cat.on .cat-collapse { opacity: .75; }
+  .cat-collapse.open { transform: rotate(90deg); }
+  .cat.cat-child { padding-left: 26px; }
+  .cat.collapsed-child { display: none; }
   .sp-section { margin-bottom: 22px; }
   .sp-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--gray-2); margin-bottom: 8px; }
   .sp-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; margin-bottom: 4px; }
@@ -2372,9 +2382,12 @@
      straight to any other page without going back to the home screen.
      ===================================================================== */
   function pagesNavHTML() {
-    return orderedPagesForDisplay().filter(entry => !entry.isChild).map(entry => {
+    return orderedPagesForDisplay().map(entry => {
       const p = entry.page;
-      return '<div class="cat' + (p.key === view ? ' on' : '') + '" onclick="openPage(\'' + p.key + '\')">' +
+      const collapsed = collapsedPages.has(p.key);
+      const hideAsChild = entry.isChild && collapsedPages.has(entry.parentKey);
+      return '<div class="cat' + (p.key === view ? ' on' : '') + (entry.isChild ? ' cat-child' : '') + (hideAsChild ? ' collapsed-child' : '') + '" onclick="openPage(\'' + p.key + '\')">' +
+        (entry.hasChildren ? '<span class="cat-collapse' + (collapsed ? '' : ' open') + '" onclick="event.stopPropagation(); toggleCollapse(\'' + p.key + '\')" title="Show/hide subpages">\u25b6</span>' : '') +
         '<span class="cat-name" id="pagenav-' + p.key + '">' + esc(p.label) + '</span></div>';
     }).join('') + '<div class="cat-add" onclick="goHome()">\u2190 Home</div>';
   }
