@@ -17,7 +17,7 @@
     --surface-glass: rgba(255,255,255,.72);
     --surface-glass-lite: rgba(255,255,255,.34);
     --hover: rgba(20,19,24,.025);
-    --accent: #4b3f8f;
+    --accent: #372c6e;
     --accent-ink: #ffffff;
   }
   body.dark {
@@ -31,7 +31,7 @@
     --surface-glass: rgba(28,27,32,.62);
     --surface-glass-lite: rgba(28,27,32,.28);
     --hover: rgba(255,255,255,.04);
-    --accent: #8b7fff;
+    --accent: #7364e6;
     --accent-ink: #14131f;
   }
   /* ---------- prism: white base, but every glass surface picks up a soft
@@ -43,7 +43,7 @@
     --surface-glass: rgba(255,255,255,.6);
     --surface-glass-lite: rgba(255,255,255,.3);
     --hover: rgba(20,19,24,.025);
-    --accent: #a341c4;
+    --accent: #8a2fa8;
     --accent-ink: #ffffff;
   }
   body.prism .home .page-list, body.prism .home .widget-card,
@@ -64,29 +64,29 @@
   body.prism header { background: linear-gradient(90deg, rgba(255,120,150,.05), rgba(120,170,255,.05), rgba(255,220,120,.05)); }
   /* ---------- light theme hue accents (ice blue / eggshell white / deep green / tangerine) ---------- */
   body.hue-white {
-    --bg: #f5f2e9; --surface: #fffefa;
-    --surface-glass: rgba(250,247,238,.72); --surface-glass-lite: rgba(250,247,238,.34);
-    --accent: #93762e; --accent-ink: #ffffff;
+    --bg: #fafafa; --surface: #ffffff;
+    --surface-glass: rgba(255,255,255,.75); --surface-glass-lite: rgba(255,255,255,.36);
+    --accent: #2b2a31; --accent-ink: #ffffff;
   }
   body.hue-blue {
     --bg: #dce9f7; --surface: #eef6fd;
     --surface-glass: rgba(222,238,251,.72); --surface-glass-lite: rgba(222,238,251,.34);
-    --accent: #205a94; --accent-ink: #ffffff;
+    --accent: #17436f; --accent-ink: #ffffff;
   }
   body.hue-green {
     --bg: #d9ecdf; --surface: #eaf6ee;
     --surface-glass: rgba(219,240,227,.72); --surface-glass-lite: rgba(219,240,227,.34);
-    --accent: #1a6b40; --accent-ink: #ffffff;
+    --accent: #124f2f; --accent-ink: #ffffff;
   }
   body.hue-orange {
     --bg: #fbe2d6; --surface: #fef1e6;
     --surface-glass: rgba(251,224,208,.72); --surface-glass-lite: rgba(251,224,208,.34);
-    --accent: #c14b1f; --accent-ink: #ffffff;
+    --accent: #9c3c18; --accent-ink: #ffffff;
   }
-  body.hue-white .bg-weather span:nth-child(1) { background: #e9dfc5; }
-  body.hue-blue .bg-weather span:nth-child(1) { background: #a3c9f5; }
-  body.hue-green .bg-weather span:nth-child(1) { background: #9fdcae; }
-  body.hue-orange .bg-weather span:nth-child(1) { background: #ff9d6c; }
+  body.hue-white .bg-weather span:nth-child(1) { background: #e3e3e6; }
+  body.hue-blue .bg-weather span:nth-child(1) { background: #8db8ea; }
+  body.hue-green .bg-weather span:nth-child(1) { background: #7fc994; }
+  body.hue-orange .bg-weather span:nth-child(1) { background: #f27f49; }
   * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
   html { -webkit-font-smoothing: antialiased; background: var(--bg); }
   body {
@@ -180,6 +180,8 @@
   .dash-ctrl-btn:hover { background: var(--hover); color: var(--ink); }
   .dash-ctrl-btn:disabled { opacity: .35; cursor: default; }
   .dash-ctrl-btn:disabled:hover { background: var(--surface); color: var(--gray-2); }
+  .dash-ctrl-btn.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .dash-ctrl-btn.on:hover { opacity: .85; background: var(--accent); color: var(--accent-ink); }
   .cal-refresh.spinning { animation: cal-spin .6s linear; color: var(--accent); }
   @keyframes cal-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   .cal-select {
@@ -824,10 +826,10 @@
       <span class="theme-chip" data-theme="prism" onclick="setTheme('prism')">Prism</span>
     </div>
     <div class="hue-picker" id="hue-picker">
-      <span class="hue-swatch" data-hue="white" style="background:#f0ead9;" onclick="setHue('white')" title="Eggshell"></span>
-      <span class="hue-swatch" data-hue="blue" style="background:#b7d4f2;" onclick="setHue('blue')" title="Ice blue"></span>
-      <span class="hue-swatch" data-hue="green" style="background:#b9e0c5;" onclick="setHue('green')" title="Deep green"></span>
-      <span class="hue-swatch" data-hue="orange" style="background:#ff9d6c;" onclick="setHue('orange')" title="Tangerine"></span>
+      <span class="hue-swatch" data-hue="white" style="background:#ffffff;" onclick="setHue('white')" title="White"></span>
+      <span class="hue-swatch" data-hue="blue" style="background:#9cc3ee;" onclick="setHue('blue')" title="Ice blue"></span>
+      <span class="hue-swatch" data-hue="green" style="background:#93d1a8;" onclick="setHue('green')" title="Deep green"></span>
+      <span class="hue-swatch" data-hue="orange" style="background:#f4875a;" onclick="setHue('orange')" title="Tangerine"></span>
     </div>
     <div class="sp-row">
       <span>Signal only</span>
@@ -2819,8 +2821,9 @@
     return known.concat(missing);
   }
   function cardSize(key) { return dashboardSizes[key] || DEFAULT_CARD_SIZE[key] || 'half'; }
-  function toggleCardSize(key) {
-    dashboardSizes[key] = cardSize(key) === 'full' ? 'half' : 'full';
+  function cardIsFull(key) { return cardSize(key) === 'full'; }
+  function toggleCardWidth(key) {
+    dashboardSizes[key] = cardIsFull(key) ? 'half' : 'full';
     saveWorkspaceData();
     render();
   }
@@ -2839,15 +2842,19 @@
   }
   function dashboardCardsHTML() {
     const order = orderedCardKeys();
+    const halfIndices = [];
+    order.forEach((key, i) => { if (!cardIsFull(key)) halfIndices.push(i); });
+    const oddOneOut = halfIndices.length % 2 === 1 ? halfIndices[halfIndices.length - 1] : -1;
     return order.map((key, i) => {
-      const size = cardSize(key);
+      const full = cardIsFull(key);
+      const sizeClass = (full || i === oddOneOut) ? 'full' : 'half';
       const isCal = key === 'calendar';
-      return '<div class="dash-card dash-' + size + '">' +
+      return '<div class="dash-card dash-' + sizeClass + '">' +
         '<div class="dash-card-controls">' +
         (isCal ? '<button class="dash-ctrl-btn cal-refresh" id="cal-refresh-btn" onclick="event.stopPropagation(); refreshCalendarNow()" title="Refresh now">\u21bb</button>' : '') +
         '<button class="dash-ctrl-btn" onclick="event.stopPropagation(); moveCard(\'' + key + '\', -1)" title="Move up"' + (i === 0 ? ' disabled' : '') + '>\u2191</button>' +
         '<button class="dash-ctrl-btn" onclick="event.stopPropagation(); moveCard(\'' + key + '\', 1)" title="Move down"' + (i === order.length - 1 ? ' disabled' : '') + '>\u2193</button>' +
-        '<button class="dash-ctrl-btn" onclick="event.stopPropagation(); toggleCardSize(\'' + key + '\')" title="' + (size === 'full' ? 'Compress' : 'Expand') + '">' + (size === 'full' ? '\u2921' : '\u2922') + '</button>' +
+        '<button class="dash-ctrl-btn' + (full ? ' on' : '') + '" onclick="event.stopPropagation(); toggleCardWidth(\'' + key + '\')" title="' + (full ? 'Shrink to half width' : 'Expand full width') + '">' + (full ? '\u2921' : '\u2922') + '</button>' +
         '</div>' +
         cardInnerHTML(key) + '</div>';
     }).join('');
