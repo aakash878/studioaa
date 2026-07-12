@@ -157,7 +157,6 @@
 
   /* ---------- home: a clean, compact list of pages ---------- */
   .home { max-width: 980px; margin: 0 auto; padding: 48px 28px 80px; }
-  .home-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; margin-left: 34px; }
   .home-title { font-size: 23px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 3px; margin-left: 34px; }
   .home-title[contenteditable] { display: block; width: fit-content; max-width: 50%; outline: none; cursor: text; border-radius: 5px; padding: 1px 4px; margin-left: 30px; }
   .home-title[contenteditable]:hover, .home-title[contenteditable]:focus { background: var(--hover); }
@@ -1465,10 +1464,17 @@
   }
   document.addEventListener('keydown', function (e) {
     const mod = e.metaKey || e.ctrlKey;
-    if (mod && e.key.toLowerCase() === 'z') {
-      e.preventDefault();
-      undoLast();
-    }
+    if (!mod || e.key.toLowerCase() !== 'z') return;
+    // While actively editing text (a contenteditable field, an <input>, a
+    // <textarea>), let the browser's own native undo handle character-level
+    // typing history instead — our undo stack only tracks structural deletes
+    // (pages/rows), so hijacking Cmd+Z here would silently swallow it and
+    // make in-progress edits feel un-undoable.
+    const el = document.activeElement;
+    const isEditingText = el && (el.isContentEditable || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA');
+    if (isEditingText) return;
+    e.preventDefault();
+    undoLast();
   });
 
   let view = localStorage.getItem('hq_view') || 'home';
@@ -1839,7 +1845,6 @@
       '<div class="prow-add" onclick="openImport()">+ Import notes, doc, or sheet</div>';
     pagesListHTMLCache = pagesListHTML;
     return '<div class="home">' +
-      '<div class="home-eyebrow">Workspace</div>' +
       '<div class="home-title" contenteditable spellcheck="false" onkeydown="return blurOnEnter(event)" oninput="saveWorkspaceName(this.textContent)">' + esc(workspaceName) + '</div>' +
       '<div class="home-sub" id="home-clock">' + nowLabel() + '</div>' +
       '<div class="home-grid">' + dashboardCardsHTML() +
@@ -2870,9 +2875,11 @@
       const full = cardIsFull(key);
       const sizeClass = full ? 'full' : 'half';
       const isCal = key === 'calendar';
+      const pinned = pinnedWidgets.find(x => x.id === key);
       return '<div class="dash-card dash-' + sizeClass + '">' +
         '<div class="dash-card-controls">' +
         (isCal ? '<button class="dash-ctrl-btn cal-refresh" id="cal-refresh-btn" onclick="event.stopPropagation(); refreshCalendarNow()" title="Refresh now">\u21bb</button>' : '') +
+        (pinned ? '<button class="dash-ctrl-btn" onclick="event.stopPropagation(); openPinModalForWidget(\'' + key + '\')" title="Change this widget\'s view">\u270e</button>' : '') +
         '<button class="dash-ctrl-btn" onclick="event.stopPropagation(); moveCard(\'' + key + '\', -1)" title="Move up"' + (i === 0 ? ' disabled' : '') + '>\u2191</button>' +
         '<button class="dash-ctrl-btn" onclick="event.stopPropagation(); moveCard(\'' + key + '\', 1)" title="Move down"' + (i === order.length - 1 ? ' disabled' : '') + '>\u2193</button>' +
         '<button class="dash-ctrl-btn' + (full ? ' on' : '') + '" onclick="event.stopPropagation(); toggleCardWidth(\'' + key + '\')" title="' + (full ? 'Shrink to half width' : 'Expand full width') + '">' + (full ? '\u2921' : '\u2922') + '</button>' +
