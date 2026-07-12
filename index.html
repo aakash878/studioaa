@@ -163,10 +163,15 @@
   .home-title[contenteditable]:hover, .home-title[contenteditable]:focus { background: var(--hover); }
   .home-sub { font-size: 11.5px; color: var(--gray-2); opacity: .55; margin-bottom: 20px; margin-left: 34px; }
 
-  /* ---------- home dashboard grid: reorderable/resizable bento cards ---------- */
-  .home-grid { display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: min-content; grid-auto-flow: row dense; gap: 16px; }
-  .dash-card { position: relative; grid-column: span 1; }
-  .dash-card.dash-full { grid-column: 1 / 3; }
+  /* ---------- home dashboard: reorderable/resizable bento cards. Uses real
+     CSS masonry (multi-column) instead of a row-major grid, so half-width
+     cards stack naturally within their column (a tall half-width card can
+     sit beside two shorter half-width cards stacked on top of each other,
+     matching how a bento board actually reads) while full-width cards break
+     across both columns. ---------- */
+  .home-grid { column-count: 2; column-gap: 16px; }
+  .dash-card { position: relative; break-inside: avoid; margin-bottom: 16px; }
+  .dash-card.dash-full { column-span: all; }
   .dash-card-controls {
     position: absolute; top: -9px; right: -9px; display: flex; gap: 6px;
     opacity: 0; transition: opacity .15s ease; z-index: 2;
@@ -257,8 +262,7 @@
   .pin-doc-preview { font-size: 11.5px; line-height: 1.6; color: var(--gray-1); }
   .pin-doc-preview div { padding: 3px 0; }
   @media (max-width: 760px) {
-    .home-grid { grid-template-columns: 1fr; }
-    .dash-card, .dash-card.dash-full { grid-column: 1; grid-row: auto; }
+    .home-grid { column-count: 1; }
   }
 
   /* ---------- signal / noise: hide the noise widgets, glow what's marked signal ---------- */
@@ -331,6 +335,10 @@
   nav {
     width: 200px; flex-shrink: 0; border-right: 1px solid var(--line);
     padding: 18px 10px;
+  }
+  .page-nav-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--gray-2); padding: 4px 10px 8px;
   }
   .cat {
     display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 6px;
@@ -2416,15 +2424,23 @@
      same table mechanics, and (like job sheet) a left nav so you can jump
      straight to any other page without going back to the home screen.
      ===================================================================== */
+  // Scoped to just the current page's own family (its parent + siblings, or
+  // itself + its own subpages) — not the entire site's page list. Showing
+  // literally every page in the workspace here was confusing (it duplicated
+  // the whole home list inside a cramped 200px column with no clear
+  // relation to what you were actually looking at).
   function pagesNavHTML() {
-    return orderedPagesForDisplay().map(entry => {
-      const p = entry.page;
-      const collapsed = collapsedPages.has(p.key);
-      const hideAsChild = entry.isChild && collapsedPages.has(entry.parentKey);
-      return '<div class="cat' + (p.key === view ? ' on' : '') + (entry.isChild ? ' cat-child' : '') + (hideAsChild ? ' collapsed-child' : '') + '" onclick="openPage(\'' + p.key + '\')">' +
-        (entry.hasChildren ? '<span class="cat-collapse' + (collapsed ? '' : ' open') + '" onclick="event.stopPropagation(); toggleCollapse(\'' + p.key + '\')" title="Show/hide subpages">\u25b6</span>' : '') +
-        '<span class="cat-name" id="pagenav-' + p.key + '">' + esc(p.label) + '</span></div>';
-    }).join('') + '<div class="cat-add" onclick="goHome()">\u2190 Home</div>';
+    const p = pages.find(x => x.key === view);
+    if (!p) return '<div class="cat-add" onclick="goHome()">\u2190 Home</div>';
+    const root = (p.parent && pages.some(x => x.key === p.parent)) ? pages.find(x => x.key === p.parent) : p;
+    const children = pages.filter(x => x.parent === root.key);
+    const rows = [root].concat(children);
+    return '<div class="page-nav-label">' + esc(root.label) + '</div>' +
+      rows.map(pg => {
+        const isChild = pg.key !== root.key;
+        return '<div class="cat' + (pg.key === view ? ' on' : '') + (isChild ? ' cat-child' : '') + '" onclick="openPage(\'' + pg.key + '\')">' +
+          '<span class="cat-name" id="pagenav-' + pg.key + '">' + esc(pg.label) + '</span></div>';
+      }).join('') + '<div class="cat-add" onclick="goHome()">\u2190 Home</div>';
   }
   // Only worth showing the nav when the current page actually has other
   // pages to jump to right there (it's a subpage with siblings/a parent, or
@@ -2627,7 +2643,7 @@
     let p = curPage();
     if (!wasOnDoc) {
       const key = 'untitled-' + Date.now().toString(36).slice(-5);
-      p = { key: key, label: 'Untitled note', type: 'doc', blocks: [] };
+      p = { key: key, label: 'New page', type: 'doc', blocks: [] };
       pages.push(p);
       view = key;
       localStorage.setItem('hq_view', key);
@@ -2652,7 +2668,7 @@
   function openNewNote() {
     // No modal, no questions \u2014 create a blank doc and drop straight into it.
     // Rename it inline once you're in (same as any other page title).
-    const name = 'Untitled';
+    const name = 'New page';
     const key = 'note-' + Date.now().toString(36).slice(-6);
     pages.push({ key: key, label: name, type: 'doc', parent: null, blocks: [{ t: 'h2', html: name }] });
     savePages();
@@ -2850,12 +2866,9 @@
   }
   function dashboardCardsHTML() {
     const order = orderedCardKeys();
-    const halfIndices = [];
-    order.forEach((key, i) => { if (!cardIsFull(key)) halfIndices.push(i); });
-    const oddOneOut = halfIndices.length % 2 === 1 ? halfIndices[halfIndices.length - 1] : -1;
     return order.map((key, i) => {
       const full = cardIsFull(key);
-      const sizeClass = (full || i === oddOneOut) ? 'full' : 'half';
+      const sizeClass = full ? 'full' : 'half';
       const isCal = key === 'calendar';
       return '<div class="dash-card dash-' + sizeClass + '">' +
         '<div class="dash-card-controls">' +
