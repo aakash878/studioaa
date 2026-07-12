@@ -414,13 +414,13 @@ def _refresh_access_token(session):
 
 
 def _fetch_calendar_events(session):
-    """Returns (connected: bool, reauth_required: bool, events: list, error: str|None).
+    """Returns (connected: bool, reauth_required: bool, events: list, error: str|None, calendar_name: str|None).
     Refreshes the access token first if it's missing or about to expire."""
     if not session.get("access_token") or not session.get("refresh_token"):
-        return False, True, [], "no access_token/refresh_token on this session (never connected, or signed in before calendar access was requested)"
+        return False, True, [], "no access_token/refresh_token on this session (never connected, or signed in before calendar access was requested)", None
     if not session.get("token_expiry") or time.time() > session["token_expiry"] - 60:
         if not _refresh_access_token(session):
-            return False, True, [], "token refresh failed (refresh_token missing/expired/revoked)"
+            return False, True, [], "token refresh failed (refresh_token missing/expired/revoked)", None
 
     now = datetime.now(timezone.utc)
     time_min = now.isoformat()
@@ -441,11 +441,16 @@ def _fetch_calendar_events(session):
         body = e.read().decode("utf-8", "replace")[:500]
         print(f"[calendar] HTTPError {e.code} from Google Calendar API: {body}", flush=True)
         if e.code in (401, 403):
-            return False, True, [], f"HTTP {e.code}: {body}"
-        return False, False, [], f"HTTP {e.code}: {body}"
+            return False, True, [], f"HTTP {e.code}: {body}", None
+        return False, False, [], f"HTTP {e.code}: {body}", None
     except urllib.error.URLError as e:
         print(f"[calendar] URLError reaching Google Calendar API: {e}", flush=True)
-        return False, False, [], f"network error: {e}"
+        return False, False, [], f"network error: {e}", None
+
+    # events.list's top-level "summary" is the calendar's own title (for the
+    # "primary" calendar this is the signed-in account's name/email) - surface
+    # it so the widget can show which calendar these events are coming from.
+    calendar_name = data.get("summary")
 
     events = []
     for item in data.get("items", []):
@@ -460,7 +465,7 @@ def _fetch_calendar_events(session):
             "allDay": all_day,
             "location": item.get("location"),
         })
-    return True, False, events, None
+    return True, False, events, None, calendar_name
 
 
 def _session_from_cookie(handler):
@@ -522,12 +527,13 @@ class Handler(SimpleHTTPRequestHandler):
             session = self._require_session()
             if not session:
                 return
-            connected, reauth_required, events, error = _fetch_calendar_events(session)
+            connected, reauth_required, events, error, calendar_name = _fetch_calendar_events(session)
             self._reply(200, {
                 "connected": connected,
                 "reauth_required": reauth_required,
                 "error": error,
                 "events": events,
+                "calendar_name": calendar_name,
             })
             return
         m = WORKSPACE_DATA_RE.match(path)

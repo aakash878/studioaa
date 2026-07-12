@@ -175,6 +175,16 @@
   }
   .dash-card:hover .dash-card-size { opacity: 1; }
   .dash-card-size:hover { background: var(--hover); color: var(--ink); }
+  .cal-refresh {
+    position: absolute; top: -9px; right: 19px; width: 22px; height: 22px; border-radius: 50%;
+    border: 1px solid var(--line); background: var(--surface); color: var(--gray-2); font-size: 13px;
+    line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    opacity: 0; transition: opacity .15s ease; z-index: 2;
+  }
+  .dash-card:hover .cal-refresh { opacity: 1; }
+  .cal-refresh:hover { background: var(--hover); color: var(--ink); }
+  .cal-refresh.spinning { animation: cal-spin .6s linear; color: var(--accent); }
+  @keyframes cal-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   .hg-pages { display: flex; flex-direction: column; height: 100%; }
   .widget-card {
     background: var(--surface-glass); backdrop-filter: blur(16px) saturate(160%); -webkit-backdrop-filter: blur(16px) saturate(160%);
@@ -210,6 +220,11 @@
   }
   .tl-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--gray-1); }
   .tl-cat { font-size: 9.5px; color: var(--gray-2); flex-shrink: 0; }
+  .cal-source {
+    font-size: 9.5px; color: var(--gray-2); text-transform: uppercase; letter-spacing: .04em;
+    padding-bottom: 6px; margin-bottom: 4px; border-bottom: 1px solid var(--line-soft);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
   .cal-item { display: flex; align-items: baseline; gap: 9px; padding: 5px 0; border-bottom: 1px solid var(--line-soft); font-size: 11.5px; }
   .cal-item:last-child { border-bottom: none; }
   .cal-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; text-align: left; }
@@ -1587,7 +1602,7 @@
   }
 
   /* ---------- live Google Calendar widget: real events, next 7 days ---------- */
-  let calendarState = { loaded: false, connected: false, reauthRequired: false, events: [] };
+  let calendarState = { loaded: false, connected: false, reauthRequired: false, events: [], calendarName: null };
   let calendarTimer = null;
   function calendarHTML() {
     const s = calendarState;
@@ -1599,8 +1614,9 @@
         '</div>' +
         (s.reauthRequired ? '<a class="cal-connect" href="/oauth/start">Connect calendar</a>' : '');
     }
-    if (!s.events.length) return '<div class="widget-empty">Nothing on your calendar this week.</div>';
-    return s.events.map(ev => {
+    const calLine = s.calendarName ? '<div class="cal-source">' + esc(s.calendarName) + '</div>' : '';
+    if (!s.events.length) return calLine + '<div class="widget-empty">Nothing on your calendar this week.</div>';
+    return calLine + s.events.map(ev => {
       const start = ev.start ? new Date(ev.start) : null;
       const dateStr = start ? fmtShort(start) : '';
       const timeStr = start ? (ev.allDay ? 'All day' : start.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })) : '';
@@ -1620,11 +1636,12 @@
         reauthRequired: !!data.reauth_required,
         error: data.error || null,
         events: data.events || [],
+        calendarName: data.calendar_name || null,
       };
       const body = document.getElementById('calendar-body');
       if (body) body.innerHTML = calendarHTML();
     }).catch(err => {
-      calendarState = { loaded: true, connected: false, reauthRequired: false, error: 'fetch failed: ' + err, events: [] };
+      calendarState = { loaded: true, connected: false, reauthRequired: false, error: 'fetch failed: ' + err, events: [], calendarName: null };
       const body = document.getElementById('calendar-body');
       if (body) body.innerHTML = calendarHTML();
     });
@@ -1633,6 +1650,12 @@
     loadCalendarWidget();
     clearInterval(calendarTimer);
     calendarTimer = setInterval(loadCalendarWidget, 5 * 60 * 1000);
+  }
+  function refreshCalendarNow() {
+    const btn = document.getElementById('cal-refresh-btn');
+    if (btn) btn.classList.add('spinning');
+    loadCalendarWidget();
+    setTimeout(() => { const b = document.getElementById('cal-refresh-btn'); if (b) b.classList.remove('spinning'); }, 600);
   }
 
   function orderedPagesForDisplay() {
@@ -2731,7 +2754,9 @@
     if (key === 'schedule') return '<div class="hg-schedule widget-card">' + widgetHeaderHTML('schedule') + scheduleHTML() + '</div>';
     if (key === 'status') return '<div class="hg-status widget-card">' + widgetHeaderHTML('status') + statusHTML() + '</div>';
     if (key === 'priority') return '<div class="hg-priority widget-card">' + widgetHeaderHTML('priority') + priorityHTML() + '</div>';
-    if (key === 'calendar') return '<div class="hg-calendar widget-card">' + widgetHeaderHTML('calendar') + '<div id="calendar-body">' + calendarHTML() + '</div></div>';
+    if (key === 'calendar') return '<div class="hg-calendar widget-card">' +
+      '<button class="cal-refresh" id="cal-refresh-btn" onclick="event.stopPropagation(); refreshCalendarNow()" title="Refresh now">\u21bb</button>' +
+      widgetHeaderHTML('calendar') + '<div id="calendar-body">' + calendarHTML() + '</div></div>';
     const w = pinnedWidgets.find(x => x.id === key);
     return w ? pinnedWidgetCardHTML(w) : '';
   }
