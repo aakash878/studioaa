@@ -640,10 +640,18 @@
   .sp-page-name[contenteditable] { outline: none; cursor: text; }
   .sp-page-name[contenteditable]:focus { background: var(--hover); border-radius: 4px; }
   .sp-page-pinned { font-size: 9.5px; font-weight: 700; color: var(--gray-2); opacity: .7; flex-shrink: 0; white-space: nowrap; }
-  .ws-item { padding: 6px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ws-item { padding: 6px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
   .ws-item:hover { background: var(--hover); }
   .ws-item.on { color: var(--ink); background: var(--hover); }
   .ws-item.ws-new { color: var(--gray-2); font-weight: 500; }
+  .ws-item.ws-limit { color: var(--gray-2); font-weight: 500; cursor: default; }
+  .ws-item.ws-limit:hover { background: none; }
+  .ws-item-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+  .ws-item-del {
+    border: none; background: none; color: var(--gray-2); cursor: pointer; font-size: 13px;
+    line-height: 1; padding: 2px 4px; border-radius: 4px; flex-shrink: 0;
+  }
+  .ws-item-del:hover { background: var(--hover); color: var(--ink); }
   .sp-tools { display: flex; flex-direction: column; gap: 1px; }
   .sp-tool-primary {
     background: linear-gradient(135deg, rgba(196,201,209,.22), rgba(196,201,209,.08));
@@ -3062,14 +3070,39 @@
     });
   }
 
+  const MAX_WORKSPACES = 3;
   function renderWorkspaceSwitcher(workspaces) {
     const itemsHTML = workspaces.map(w =>
-      '<div class="ws-item' + (w.id === currentWorkspaceId ? ' on' : '') + '" onclick="switchWorkspace(' + w.id + ', \'' + jsAttrStr(w.name) + '\', \'' + w.role + '\'); closeHeaderWsPop();">' + esc(w.name) + '</div>'
-    ).join('') + '<div class="ws-item ws-new" onclick="createNewWorkspace()">+ New workspace</div>';
+      '<div class="ws-item' + (w.id === currentWorkspaceId ? ' on' : '') + '" onclick="switchWorkspace(' + w.id + ', \'' + jsAttrStr(w.name) + '\', \'' + w.role + '\'); closeHeaderWsPop();">' +
+        '<span class="ws-item-name">' + esc(w.name) + '</span>' +
+        (w.role === 'owner' ? '<button class="ws-item-del" onclick="event.stopPropagation(); deleteWorkspace(' + w.id + ', \'' + jsAttrStr(w.name) + '\')" title="Delete workspace">\u00d7</button>' : '') +
+        '</div>'
+    ).join('') + (workspaces.length < MAX_WORKSPACES ?
+      '<div class="ws-item ws-new" onclick="createNewWorkspace()">+ New workspace</div>' :
+      '<div class="ws-item ws-limit">Limit of ' + MAX_WORKSPACES + ' workspaces</div>');
     const el = document.getElementById('workspace-switcher');
     if (el) el.innerHTML = itemsHTML;
     const hdrPop = document.getElementById('hdr-ws-pop');
     if (hdrPop) hdrPop.innerHTML = itemsHTML;
+  }
+  function deleteWorkspace(id, name) {
+    if (!confirm('Delete workspace "' + name + '"? This permanently deletes all its pages and data.')) return;
+    fetch('/api/workspaces/' + id, { method: 'DELETE' }).then(r => {
+      if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Failed to delete workspace'); });
+      return fetch('/api/workspaces').then(r => r.json());
+    }).then(workspaces => {
+      knownWorkspaces = workspaces;
+      renderWorkspaceSwitcher(workspaces);
+      if (id === currentWorkspaceId) {
+        if (workspaces.length) {
+          switchWorkspace(workspaces[0].id, workspaces[0].name, workspaces[0].role);
+        } else {
+          currentWorkspaceId = null;
+          render();
+          maybeOnboard();
+        }
+      }
+    }).catch(err => showToast(err.message || 'Could not delete workspace'));
   }
   function toggleHeaderWsPop() {
     document.getElementById('hdr-ws-pop').classList.toggle('show');

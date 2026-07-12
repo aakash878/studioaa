@@ -16,8 +16,10 @@ and adds:
   - GET  /api/calendar/list      every calendar on the signed-in account, so the
                                  widget can offer a switcher instead of just primary.
   - GET  /api/workspaces                       workspaces the signed-in user belongs to.
-  - POST /api/workspaces                       create a new workspace (caller becomes owner).
+  - POST /api/workspaces                       create a new workspace (caller becomes owner;
+                                                capped at MAX_WORKSPACES_PER_USER per user).
   - PATCH /api/workspaces/<id>                 rename a workspace (owner-only).
+  - DELETE /api/workspaces/<id>                delete a workspace and all its data (owner-only).
   - GET  /PUT /api/workspaces/<id>/data         read/write a workspace's pages+categories+widgets.
   - GET  /POST /api/workspaces/<id>/members     list / invite members (owner-only).
   - DELETE /api/workspaces/<id>/members/<email> remove a member or pending invite (owner-only).
@@ -131,6 +133,8 @@ GOOGLE_SCOPES = (
 ALLOWED_EMAILS = {
     e.strip().lower() for e in os.environ.get("ALLOWED_EMAILS", "").split(",") if e.strip()
 }
+# Cap on how many workspaces a single user can belong to (owned or joined).
+MAX_WORKSPACES_PER_USER = 3
 
 # ---------- Postgres (users, workspaces, membership, per-workspace data) ----------
 DATABASE_URL = os.environ.get("DATABASE_URL")
@@ -730,6 +734,20 @@ class Handler(SimpleHTTPRequestHandler):
                 conn.commit()
             self._reply(204, None)
             return
+        m = WORKSPACE_RE.match(path)
+        if m:
+            session = self._require_session()
+            if not session:
+                return
+            workspace_id = int(m.group(1))
+            with get_conn() as conn, conn.cursor() as cur:
+                if workspace_role(cur, session["user_id"], workspace_id) != "owner":
+                    self._reply(403, {"error": "only the workspace owner can delete it"})
+                    return
+                cur.execute("DELETE FROM workspaces WHERE id = %s", (workspace_id,))
+                conn.commit()
+            self._reply(204, None)
+            return
         m = WORKSPACE_MEMBER_RE.match(path)
         if not m:
             self.send_error(404)
@@ -789,6 +807,9 @@ class Handler(SimpleHTTPRequestHandler):
         if self.path == "/api/workspaces":
             session = self._require_session()
             if not session:
+                return
+            if user_workspace_count(session["user_id"]) >= MAX_WORKSPACES_PER_USER:
+                self._reply(400, {"error": "You can only have up to " + str(MAX_WORKSPACES_PER_USER) + " workspaces. Delete one first."})
                 return
             body = self._read_json_body()
             if body is None:
