@@ -17,6 +17,8 @@
     --surface-glass: rgba(255,255,255,.72);
     --surface-glass-lite: rgba(255,255,255,.34);
     --hover: rgba(20,19,24,.025);
+    --accent: #4b3f8f;
+    --accent-ink: #ffffff;
   }
   body.dark {
     --ink: #eeedf1;
@@ -29,6 +31,8 @@
     --surface-glass: rgba(28,27,32,.62);
     --surface-glass-lite: rgba(28,27,32,.28);
     --hover: rgba(255,255,255,.04);
+    --accent: #8b7fff;
+    --accent-ink: #14131f;
   }
   /* ---------- prism: white base, but every glass surface picks up a soft
      rainbow-hued edge, like frosted glass catching light ---------- */
@@ -39,12 +43,22 @@
     --surface-glass: rgba(255,255,255,.6);
     --surface-glass-lite: rgba(255,255,255,.3);
     --hover: rgba(20,19,24,.025);
+    --accent: #a341c4;
+    --accent-ink: #ffffff;
   }
   body.prism .home .page-list, body.prism .home .widget-card,
   body.prism .side-panel, body.prism .onboard-card, body.prism .greet-card,
   body.prism .modal-card, body.prism .hdr-ws-pop, body.prism .toast {
-    background: linear-gradient(135deg, rgba(255,120,150,.10), rgba(120,170,255,.08) 30%, rgba(255,220,120,.08) 60%, rgba(150,255,200,.1) 100%), var(--surface-glass);
-    border-image: linear-gradient(135deg, rgba(255,120,150,.5), rgba(120,170,255,.4) 30%, rgba(255,220,120,.4) 60%, rgba(150,255,200,.5) 100%) 1;
+    /* gradient "border" as a background layer (clipped to border-box) instead of
+       border-image \u2014 border-image ignores border-radius entirely in every
+       browser, which was making the rainbow edge draw as a hard square poking
+       out past the card's rounded corners. Backgrounds clip to the radius
+       correctly, so this keeps the square-free rounded look at any radius. */
+    background:
+      linear-gradient(135deg, rgba(255,120,150,.10), rgba(120,170,255,.08) 30%, rgba(255,220,120,.08) 60%, rgba(150,255,200,.1) 100%) padding-box,
+      var(--surface-glass) padding-box,
+      linear-gradient(135deg, rgba(255,120,150,.5), rgba(120,170,255,.4) 30%, rgba(255,220,120,.4) 60%, rgba(150,255,200,.5) 100%) border-box;
+    border: 1px solid transparent;
     box-shadow: 0 2px 24px rgba(140,120,255,.08), 0 0 0 1px rgba(255,255,255,.4) inset;
   }
   body.prism header { background: linear-gradient(90deg, rgba(255,120,150,.05), rgba(120,170,255,.05), rgba(255,220,120,.05)); }
@@ -52,18 +66,22 @@
   body.hue-white {
     --bg: #f5f2e9; --surface: #fffefa;
     --surface-glass: rgba(250,247,238,.72); --surface-glass-lite: rgba(250,247,238,.34);
+    --accent: #93762e; --accent-ink: #ffffff;
   }
   body.hue-blue {
     --bg: #dce9f7; --surface: #eef6fd;
     --surface-glass: rgba(222,238,251,.72); --surface-glass-lite: rgba(222,238,251,.34);
+    --accent: #205a94; --accent-ink: #ffffff;
   }
   body.hue-green {
     --bg: #d9ecdf; --surface: #eaf6ee;
     --surface-glass: rgba(219,240,227,.72); --surface-glass-lite: rgba(219,240,227,.34);
+    --accent: #1a6b40; --accent-ink: #ffffff;
   }
   body.hue-orange {
     --bg: #fbe2d6; --surface: #fef1e6;
     --surface-glass: rgba(251,224,208,.72); --surface-glass-lite: rgba(251,224,208,.34);
+    --accent: #c14b1f; --accent-ink: #ffffff;
   }
   body.hue-white .bg-weather span:nth-child(1) { background: #e9dfc5; }
   body.hue-blue .bg-weather span:nth-child(1) { background: #a3c9f5; }
@@ -139,7 +157,7 @@
 
   /* ---------- home: a clean, compact list of pages ---------- */
   .home { max-width: 980px; margin: 0 auto; padding: 48px 28px 80px; }
-  .home-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gray-2); margin-bottom: 6px; margin-left: 34px; }
+  .home-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; margin-left: 34px; }
   .home-title { font-size: 23px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 3px; margin-left: 34px; }
   .home-title[contenteditable] { display: block; width: fit-content; max-width: 50%; outline: none; cursor: text; border-radius: 5px; padding: 1px 4px; margin-left: 30px; }
   .home-title[contenteditable]:hover, .home-title[contenteditable]:focus { background: var(--hover); }
@@ -179,11 +197,11 @@
   .widget-sub[contenteditable]:hover, .widget-sub[contenteditable]:focus { background: var(--hover); }
   .widget-empty { font-size: 11.5px; color: var(--gray-2); padding: 8px 0; }
   .cal-connect {
-    display: inline-block; font-size: 11px; font-weight: 700; color: var(--ink);
-    border: 1px solid var(--line); border-radius: 20px; padding: 5px 12px; text-decoration: none;
+    display: inline-block; font-size: 11px; font-weight: 700; color: var(--accent);
+    border: 1px solid var(--accent); border-radius: 20px; padding: 5px 12px; text-decoration: none;
     margin-top: 2px;
   }
-  .cal-connect:hover { background: var(--hover); }
+  .cal-connect:hover { background: var(--accent); color: var(--accent-ink); }
   .tl-item { display: flex; align-items: baseline; gap: 9px; padding: 5px 0; border-bottom: 1px solid var(--line-soft); font-size: 11.5px; }
   .tl-item:last-child { border-bottom: none; }
   .tl-date {
@@ -201,12 +219,12 @@
   .st-row { display: flex; align-items: center; gap: 8px; font-size: 11px; padding: 4px 0; }
   .st-label { flex-shrink: 0; width: 92px; color: var(--gray-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .st-bar-wrap { flex: 1; height: 5px; background: var(--line-soft); border-radius: 3px; overflow: hidden; }
-  .st-bar { display: block; height: 100%; background: var(--ink); border-radius: 3px; }
+  .st-bar { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
   .st-count { font-size: 10px; color: var(--gray-2); width: 16px; text-align: right; flex-shrink: 0; }
   .pr-item { display: flex; align-items: center; gap: 12px; padding: 8px 4px; border-bottom: 1px solid var(--line-soft); font-size: 12.5px; }
   .pr-item:last-child { border-bottom: none; }
   .pr-rank {
-    width: 20px; height: 20px; border-radius: 50%; background: var(--ink); color: var(--bg);
+    width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: var(--accent-ink);
     font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
   .pr-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -269,7 +287,8 @@
     color: var(--gray-2); flex-shrink: 0; padding: 2px 6px; border-radius: 20px; border: 1px solid var(--line);
     cursor: pointer;
   }
-  .prow-pin-badge:hover { color: var(--ink); background: var(--hover); }
+  .prow-pin-badge { color: var(--accent); border-color: var(--accent); }
+  .prow-pin-badge:hover { color: var(--accent-ink); background: var(--accent); }
   .prow-pin {
     display: none; border: none; background: none; color: var(--gray-2); cursor: pointer;
     font-size: 10px; flex-shrink: 0; padding: 2px 7px; border-radius: 20px; border: 1px solid var(--line);
@@ -300,7 +319,9 @@
     justify-content: space-between;
   }
   .cat:hover { background: var(--hover); color: var(--ink); }
-  .cat.on { background: var(--hover); color: var(--ink); font-weight: 600; }
+  .cat.on { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+  .cat.on .cat-n { color: var(--accent-ink); opacity: .75; }
+  .cat.on .cat-del { color: var(--accent-ink); opacity: .6; }
   .cat-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cat-name[contenteditable] { outline: none; cursor: text; }
   .cat-name[contenteditable]:focus { color: var(--ink); }
@@ -544,7 +565,7 @@
     background: var(--surface); color: var(--ink); cursor: pointer; font-family: inherit;
   }
   .modal-btn:hover { background: var(--hover); }
-  .modal-btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .modal-btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
   .modal-btn.primary:hover { opacity: .85; }
 
   /* ---------- right-edge hover panel: appearance / account / pages ---------- */
@@ -683,7 +704,7 @@
     cursor: pointer; transition: transform .12s ease;
   }
   .hue-swatch:hover { transform: scale(1.14); }
-  .hue-swatch.on { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--ink); }
+  .hue-swatch.on { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--accent); }
 
   /* ---------- daily greeting: shown once per day per workspace, surfaces
      what's actually urgent today so opening HQ isn't a blank stare ---------- */
@@ -1700,6 +1721,8 @@
     if (rowEl && rowEl.textContent !== text) rowEl.textContent = text;
     const spEl = document.getElementById('spname-' + key);
     if (spEl && spEl.textContent !== text) spEl.textContent = text;
+    const navEl = document.getElementById('pagenav-' + key);
+    if (navEl && navEl.textContent !== text) navEl.textContent = text;
     if (view === key) {
       const pt = document.getElementById('pt-title');
       if (pt && pt.textContent !== text) pt.textContent = text;
@@ -2311,16 +2334,23 @@
 
   /* =====================================================================
      STANDALONE PAGES: everything on the home list besides job sheet —
-     starts blank, same table mechanics, no sidebar since there's nothing
-     to browse yet.
+     same table mechanics, and (like job sheet) a left nav so you can jump
+     straight to any other page without going back to the home screen.
      ===================================================================== */
+  function pagesNavHTML() {
+    return orderedPagesForDisplay().filter(entry => !entry.isChild).map(entry => {
+      const p = entry.page;
+      return '<div class="cat' + (p.key === view ? ' on' : '') + '" onclick="openPage(\'' + p.key + '\')">' +
+        '<span class="cat-name" id="pagenav-' + p.key + '">' + esc(p.label) + '</span></div>';
+    }).join('') + '<div class="cat-add" onclick="goHome()">\u2190 Home</div>';
+  }
   function pageTableShellHTML() {
-    return '<main style="padding:28px 32px 80px;">' +
+    return '<div class="shell"><nav id="page-nav">' + pagesNavHTML() + '</nav><main style="padding:28px 32px 80px;">' +
       '<div class="page-title" id="pt-title" contenteditable spellcheck="false" onkeydown="return blurOnEnter(event)" oninput="renamePage(view, this.textContent)"></div><div class="page-sub" id="pt-sub"></div>' +
       '<div id="pt-filter-bar-slot"></div>' +
       '<div class="table-wrap"><table id="pt-tbl"><thead id="pt-thead"></thead><tbody id="pt-tbody"></tbody></table></div>' +
       '<div class="add-row" onclick="ptAddRow()">+ New</div>' +
-      '</main>';
+      '</main></div>';
   }
   function curPage() { return pages.find(p => p.key === view); }
   function renderPageTable() {
@@ -2391,7 +2421,7 @@
      same way — "+ Add section" / "+ add item" at every level.
      ===================================================================== */
   function docShellHTML() {
-    return '<main class="doc"><div id="doc-body"></div></main>';
+    return '<div class="shell"><nav id="page-nav">' + pagesNavHTML() + '</nav><main class="doc"><div id="doc-body"></div></main></div>';
   }
   function itemRef(items, path) {
     let arr = items;
