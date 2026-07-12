@@ -196,6 +196,12 @@
   .cal-refresh:hover { background: var(--hover); color: var(--ink); }
   .cal-refresh.spinning { animation: cal-spin .6s linear; color: var(--accent); }
   @keyframes cal-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .cal-select {
+    font-family: 'Inter', sans-serif; font-size: 9.5px; color: var(--gray-2); text-transform: uppercase; letter-spacing: .04em;
+    border: none; background: transparent; outline: none; cursor: pointer; padding: 0 0 6px; margin-bottom: 4px;
+    border-bottom: 1px solid var(--line-soft); width: 100%; max-width: 100%;
+  }
+  .cal-select:hover, .cal-select:focus { color: var(--ink); }
   .hg-pages { display: flex; flex-direction: column; height: 100%; }
   .widget-card {
     background: var(--surface-glass); backdrop-filter: blur(16px) saturate(160%); -webkit-backdrop-filter: blur(16px) saturate(160%);
@@ -231,11 +237,6 @@
   }
   .tl-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--gray-1); }
   .tl-cat { font-size: 9.5px; color: var(--gray-2); flex-shrink: 0; }
-  .cal-source {
-    font-family: 'Inter', sans-serif; font-size: 9.5px; color: var(--gray-2); text-transform: uppercase; letter-spacing: .04em;
-    padding-bottom: 6px; margin-bottom: 4px; border-bottom: 1px solid var(--line-soft);
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
   .cal-item { display: flex; align-items: baseline; gap: 9px; padding: 5px 0; border-bottom: 1px solid var(--line-soft); font-size: 11.5px; font-family: 'Inter', sans-serif; }
   .cal-item:last-child { border-bottom: none; }
   .cal-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; text-align: left; }
@@ -1628,8 +1629,33 @@
   }
 
   /* ---------- live Google Calendar widget: real events, next 7 days ---------- */
-  let calendarState = { loaded: false, connected: false, reauthRequired: false, events: [], calendarName: null };
+  let calendarState = { loaded: false, connected: false, reauthRequired: false, events: [] };
   let calendarTimer = null;
+  let calendarList = [];
+  let selectedCalendarId = localStorage.getItem('hq_calendar_id') || 'primary';
+  function calendarSelectOptionsHTML() {
+    if (!calendarList.length) {
+      return '<option value="' + esc(selectedCalendarId) + '">' + (selectedCalendarId === 'primary' ? 'Primary calendar' : esc(selectedCalendarId)) + '</option>';
+    }
+    return calendarList.map(c =>
+      '<option value="' + esc(c.id) + '"' + (c.id === selectedCalendarId ? ' selected' : '') + '>' + esc(c.summary || c.id) + '</option>'
+    ).join('');
+  }
+  function loadCalendarList() {
+    fetch('/api/calendar/list').then(r => r.json()).then(data => {
+      calendarList = data.calendars || [];
+      const sel = document.getElementById('cal-select');
+      if (sel) sel.innerHTML = calendarSelectOptionsHTML();
+    }).catch(() => {});
+  }
+  function onCalendarSelectChange(sel) {
+    selectedCalendarId = sel.value;
+    localStorage.setItem('hq_calendar_id', selectedCalendarId);
+    calendarState = { loaded: false, connected: false, reauthRequired: false, events: [] };
+    const body = document.getElementById('calendar-body');
+    if (body) body.innerHTML = calendarHTML();
+    loadCalendarWidget();
+  }
   function calendarHTML() {
     const s = calendarState;
     if (!s.loaded) return '<div class="widget-empty">Loading your calendar\u2026</div>';
@@ -1640,9 +1666,8 @@
         '</div>' +
         (s.reauthRequired ? '<a class="cal-connect" href="/oauth/start">Connect calendar</a>' : '');
     }
-    const calLine = s.calendarName ? '<div class="cal-source">' + esc(s.calendarName) + '</div>' : '';
-    if (!s.events.length) return calLine + '<div class="widget-empty">Nothing on your calendar this week.</div>';
-    return calLine + s.events.map(ev => {
+    if (!s.events.length) return '<div class="widget-empty">Nothing on your calendar this week.</div>';
+    return s.events.map(ev => {
       const start = ev.start ? new Date(ev.start) : null;
       const dateStr = start ? fmtShort(start) : '';
       // toLocaleTimeString inserts a narrow no-break space (U+202F) before AM/PM
@@ -1663,25 +1688,25 @@
     }).join('');
   }
   function loadCalendarWidget() {
-    fetch('/api/calendar/upcoming').then(r => r.ok ? r.json() : { connected: false, reauth_required: false, error: 'HTTP ' + r.status + ' from /api/calendar/upcoming', events: [] }).then(data => {
+    fetch('/api/calendar/upcoming?calendar_id=' + encodeURIComponent(selectedCalendarId)).then(r => r.ok ? r.json() : { connected: false, reauth_required: false, error: 'HTTP ' + r.status + ' from /api/calendar/upcoming', events: [] }).then(data => {
       calendarState = {
         loaded: true,
         connected: !!data.connected,
         reauthRequired: !!data.reauth_required,
         error: data.error || null,
         events: data.events || [],
-        calendarName: data.calendar_name || null,
       };
       const body = document.getElementById('calendar-body');
       if (body) body.innerHTML = calendarHTML();
     }).catch(err => {
-      calendarState = { loaded: true, connected: false, reauthRequired: false, error: 'fetch failed: ' + err, events: [], calendarName: null };
+      calendarState = { loaded: true, connected: false, reauthRequired: false, error: 'fetch failed: ' + err, events: [] };
       const body = document.getElementById('calendar-body');
       if (body) body.innerHTML = calendarHTML();
     });
   }
   function startCalendarPolling() {
     loadCalendarWidget();
+    loadCalendarList();
     clearInterval(calendarTimer);
     calendarTimer = setInterval(loadCalendarWidget, 5 * 60 * 1000);
   }
@@ -2823,6 +2848,7 @@
     if (key === 'priority') return '<div class="hg-priority widget-card">' + widgetHeaderHTML('priority') + priorityHTML() + '</div>';
     if (key === 'calendar') return '<div class="hg-calendar widget-card">' +
       '<button class="cal-refresh" id="cal-refresh-btn" onclick="event.stopPropagation(); refreshCalendarNow()" title="Refresh now">\u21bb</button>' +
+      '<select class="cal-select" id="cal-select" onclick="event.stopPropagation()" onchange="onCalendarSelectChange(this)">' + calendarSelectOptionsHTML() + '</select>' +
       widgetHeaderHTML('calendar') + '<div id="calendar-body">' + calendarHTML() + '</div></div>';
     const w = pinnedWidgets.find(x => x.id === key);
     return w ? pinnedWidgetCardHTML(w) : '';

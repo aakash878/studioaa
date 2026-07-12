@@ -11,8 +11,10 @@ and adds:
                          verify it, and start a session.
   - GET  /api/me         who's currently signed in (or 401).
   - POST /api/logout     clears the session.
-  - GET  /api/calendar/upcoming  next 7 days of the signed-in user's primary
-                                 Google Calendar (live, via calendar.readonly).
+  - GET  /api/calendar/upcoming  next 7 days of a Google Calendar (?calendar_id=,
+                                 defaults to "primary"; live, via calendar.readonly).
+  - GET  /api/calendar/list      every calendar on the signed-in account, so the
+                                 widget can offer a switcher instead of just primary.
   - GET  /api/workspaces                       workspaces the signed-in user belongs to.
   - POST /api/workspaces                       create a new workspace (caller becomes owner).
   - PATCH /api/workspaces/<id>                 rename a workspace (owner-only).
@@ -413,7 +415,35 @@ def _refresh_access_token(session):
     return True
 
 
-def _fetch_calendar_events(session):
+def _fetch_calendar_list(session):
+    """Returns (ok: bool, calendars: list, error: str|None) — the account's
+    full list of calendars (primary + any secondary/shared ones), so the
+    widget can offer a switcher instead of always showing just "primary"."""
+    if not session.get("access_token") or not session.get("refresh_token"):
+        return False, [], "no access_token/refresh_token on this session"
+    if not session.get("token_expiry") or time.time() > session["token_expiry"] - 60:
+        if not _refresh_access_token(session):
+            return False, [], "token refresh failed (refresh_token missing/expired/revoked)"
+    url = "https://www.googleapis.com/calendar/v3/users/me/calendarList?" + urllib.parse.urlencode({"minAccessRole": "reader"})
+    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {session['access_token']}"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            data = json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", "replace")[:500]
+        print(f"[calendar] HTTPError {e.code} from calendarList: {body}", flush=True)
+        return False, [], f"HTTP {e.code}: {body}"
+    except urllib.error.URLError as e:
+        print(f"[calendar] URLError reaching calendarList: {e}", flush=True)
+        return False, [], f"network error: {e}"
+    calendars = [
+        {"id": item.get("id"), "summary": item.get("summary"), "primary": bool(item.get("primary"))}
+        for item in data.get("items", [])
+    ]
+    return True, calendars, None
+
+
+def _fetch_calendar_events(session, calendar_id="primary"):
     """Returns (connected: bool, reauth_required: bool, events: list, error: str|None, calendar_name: str|None).
     Refreshes the access token first if it's missing or about to expire."""
     if not session.get("access_token") or not session.get("refresh_token"):
@@ -432,7 +462,7 @@ def _fetch_calendar_events(session):
         "orderBy": "startTime",
         "maxResults": "20",
     }
-    url = "https://www.googleapis.com/calendar/v3/calendars/primary/events?" + urllib.parse.urlencode(params)
+    url = "https://www.googleapis.com/calendar/v3/calendars/" + urllib.parse.quote(calendar_id, safe="") + "/events?" + urllib.parse.urlencode(params)
     req = urllib.request.Request(url, headers={"Authorization": f"Bearer {session['access_token']}"})
     try:
         with urllib.request.urlopen(req, timeout=20) as resp:
@@ -527,7 +557,8 @@ class Handler(SimpleHTTPRequestHandler):
             session = self._require_session()
             if not session:
                 return
-            connected, reauth_required, events, error, calendar_name = _fetch_calendar_events(session)
+            calendar_id = urllib.parse.parse_qs(parsed.query).get("calendar_id", ["primary"])[0] or "primary"
+            connected, reauth_required, events, error, calendar_name = _fetch_calendar_events(session, calendar_id)
             self._reply(200, {
                 "connected": connected,
                 "reauth_required": reauth_required,
@@ -535,6 +566,13 @@ class Handler(SimpleHTTPRequestHandler):
                 "events": events,
                 "calendar_name": calendar_name,
             })
+            return
+        if path == "/api/calendar/list":
+            session = self._require_session()
+            if not session:
+                return
+            ok, calendars, error = _fetch_calendar_list(session)
+            self._reply(200, {"ok": ok, "calendars": calendars, "error": error})
             return
         m = WORKSPACE_DATA_RE.match(path)
         if m:
