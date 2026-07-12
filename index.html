@@ -162,15 +162,20 @@
   .home-title[contenteditable]:hover, .home-title[contenteditable]:focus { background: var(--hover); }
   .home-sub { font-size: 11.5px; color: var(--gray-2); opacity: .55; margin-bottom: 20px; margin-left: 34px; }
 
-  /* ---------- home dashboard: reorderable/resizable bento cards. Uses real
-     CSS masonry (multi-column) instead of a row-major grid, so half-width
-     cards stack naturally within their column (a tall half-width card can
-     sit beside two shorter half-width cards stacked on top of each other,
-     matching how a bento board actually reads) while full-width cards break
-     across both columns. ---------- */
-  .home-grid { column-count: 2; column-gap: 16px; }
-  .dash-card { position: relative; break-inside: avoid; margin-bottom: 16px; }
-  .dash-card.dash-full { column-span: all; }
+  /* ---------- home dashboard: reorderable/resizable bento cards. Full-width
+     cards each get their own row; runs of consecutive half-width cards form
+     a "cluster" of two side-by-side columns that get balanced by actual
+     measured height in JS (balanceDashboardClusters, called after every
+     render) rather than CSS column-count's own height-guessing algorithm —
+     that guesswork is what caused visible dead space and cards jumping
+     columns unpredictably when reordered. Greedy shortest-column packing
+     means moving a card up/down always reflows the two columns from
+     scratch with no leftover gaps. ---------- */
+  .home-grid { display: flex; flex-direction: column; gap: 16px; }
+  .dash-cluster { display: flex; gap: 16px; align-items: flex-start; }
+  .dash-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+  .dash-card { position: relative; }
+  .dash-card.dash-full { width: 100%; }
   .dash-card-controls {
     position: absolute; top: -9px; right: -9px; display: flex; gap: 6px;
     opacity: 0; transition: opacity .15s ease; z-index: 2;
@@ -261,12 +266,12 @@
   .pin-doc-preview { font-size: 11.5px; line-height: 1.6; color: var(--gray-1); }
   .pin-doc-preview div { padding: 3px 0; }
   @media (max-width: 760px) {
-    .home-grid { column-count: 1; }
+    .dash-cluster { flex-direction: column; }
   }
 
   /* ---------- signal / noise: hide the noise widgets, glow what's marked signal ---------- */
   body.focus-mode .dash-card:has(.hg-schedule), body.focus-mode .dash-card:has(.hg-status) { display: none; }
-  body.focus-mode .home-grid { display: flex; flex-direction: column; }
+  body.focus-mode .dash-cluster { flex-direction: column; }
   body.focus-mode .hg-priority {
     box-shadow: 0 0 0 1px rgba(196,201,209,.5), 0 0 30px rgba(196,201,209,.3);
     border-color: rgba(196,201,209,.6);
@@ -1092,6 +1097,7 @@
     const on = !document.body.classList.contains('focus-mode');
     localStorage.setItem('hq_focus_mode', on ? '1' : '0');
     applyFocusMode();
+    if (view === 'home') requestAnimationFrame(layoutDashboardMasonry);
   }
   applyFocusMode();
 
@@ -1707,10 +1713,12 @@
       };
       const body = document.getElementById('calendar-body');
       if (body) body.innerHTML = calendarHTML();
+      if (view === 'home') requestAnimationFrame(layoutDashboardMasonry);
     }).catch(err => {
       calendarState = { loaded: true, connected: false, reauthRequired: false, error: 'fetch failed: ' + err, events: [] };
       const body = document.getElementById('calendar-body');
       if (body) body.innerHTML = calendarHTML();
+      if (view === 'home') requestAnimationFrame(layoutDashboardMasonry);
     });
   }
   function startCalendarPolling() {
@@ -2720,6 +2728,7 @@
     if (view === 'home') {
       app.innerHTML = homeHTML();
       startCalendarPolling();
+      requestAnimationFrame(layoutDashboardMasonry);
     } else if (view === 'job-sheet') {
       app.innerHTML = jobSheetShellHTML();
       renderNav(); renderTable();
@@ -2733,7 +2742,52 @@
       view = 'home'; localStorage.setItem('hq_view', 'home');
       app.innerHTML = homeHTML();
       startCalendarPolling();
+      requestAnimationFrame(layoutDashboardMasonry);
     }
+  }
+
+  /* ---------- dashboard masonry: greedy shortest-column packing driven by
+     real measured heights, not CSS's own column-balancing guesswork (which
+     produced visible dead space and made reordered cards jump to a
+     different column unpredictably). Full-width cards get their own row;
+     consecutive runs of half-width cards form a cluster of two columns,
+     each card going into whichever column is currently shorter. ---------- */
+  function layoutDashboardMasonry() {
+    const grid = document.querySelector('.home-grid');
+    if (!grid) return;
+    const cards = Array.from(grid.children).filter(el => el.classList.contains('dash-card'));
+    if (!cards.length) return;
+    const heights = new Map();
+    cards.forEach(el => heights.set(el, el.offsetHeight));
+    const runs = [];
+    let curCluster = null;
+    cards.forEach(el => {
+      if (el.classList.contains('dash-full')) {
+        curCluster = null;
+        runs.push({ type: 'full', el: el });
+      } else {
+        if (!curCluster) { curCluster = { type: 'cluster', cards: [] }; runs.push(curCluster); }
+        curCluster.cards.push(el);
+      }
+    });
+    const frag = document.createDocumentFragment();
+    runs.forEach(run => {
+      if (run.type === 'full') { frag.appendChild(run.el); return; }
+      const cluster = document.createElement('div');
+      cluster.className = 'dash-cluster';
+      const colA = document.createElement('div'); colA.className = 'dash-col';
+      const colB = document.createElement('div'); colB.className = 'dash-col';
+      cluster.appendChild(colA);
+      cluster.appendChild(colB);
+      let hA = 0, hB = 0;
+      run.cards.forEach(el => {
+        if (hA <= hB) { colA.appendChild(el); hA += heights.get(el) + 16; }
+        else { colB.appendChild(el); hB += heights.get(el) + 16; }
+      });
+      frag.appendChild(cluster);
+    });
+    grid.innerHTML = '';
+    grid.appendChild(frag);
   }
 
   /* =====================================================================
