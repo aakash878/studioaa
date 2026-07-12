@@ -48,22 +48,27 @@
     box-shadow: 0 2px 24px rgba(140,120,255,.08), 0 0 0 1px rgba(255,255,255,.4) inset;
   }
   body.prism header { background: linear-gradient(90deg, rgba(255,120,150,.05), rgba(120,170,255,.05), rgba(255,220,120,.05)); }
-  /* ---------- light theme hue accents (blue / green / orange / white) ---------- */
+  /* ---------- light theme hue accents (ice blue / eggshell white / deep green / tangerine) ---------- */
+  body.hue-white {
+    --bg: #f5f2e9; --surface: #fffefa;
+    --surface-glass: rgba(250,247,238,.72); --surface-glass-lite: rgba(250,247,238,.34);
+  }
   body.hue-blue {
-    --bg: #f2f6fc; --surface: #ffffff;
-    --surface-glass: rgba(240,247,255,.72); --surface-glass-lite: rgba(240,247,255,.34);
+    --bg: #dce9f7; --surface: #eef6fd;
+    --surface-glass: rgba(222,238,251,.72); --surface-glass-lite: rgba(222,238,251,.34);
   }
   body.hue-green {
-    --bg: #f2f8f3; --surface: #ffffff;
-    --surface-glass: rgba(240,252,242,.72); --surface-glass-lite: rgba(240,252,242,.34);
+    --bg: #d9ecdf; --surface: #eaf6ee;
+    --surface-glass: rgba(219,240,227,.72); --surface-glass-lite: rgba(219,240,227,.34);
   }
   body.hue-orange {
-    --bg: #fdf6ef; --surface: #ffffff;
-    --surface-glass: rgba(255,247,238,.72); --surface-glass-lite: rgba(255,247,238,.34);
+    --bg: #fbe2d6; --surface: #fef1e6;
+    --surface-glass: rgba(251,224,208,.72); --surface-glass-lite: rgba(251,224,208,.34);
   }
-  body.hue-blue .bg-weather span:nth-child(1) { background: #b8d3ff; }
-  body.hue-green .bg-weather span:nth-child(1) { background: #bce6c6; }
-  body.hue-orange .bg-weather span:nth-child(1) { background: #ffd3ab; }
+  body.hue-white .bg-weather span:nth-child(1) { background: #e9dfc5; }
+  body.hue-blue .bg-weather span:nth-child(1) { background: #a3c9f5; }
+  body.hue-green .bg-weather span:nth-child(1) { background: #9fdcae; }
+  body.hue-orange .bg-weather span:nth-child(1) { background: #ff9d6c; }
   * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
   html { -webkit-font-smoothing: antialiased; background: var(--bg); }
   body {
@@ -83,9 +88,7 @@
   .hdr-freshness { font-size: 9.5px; color: var(--gray-2); opacity: .55; }
   .hdr-word { font-size: 13.5px; font-weight: 700; letter-spacing: -0.02em; cursor: pointer; }
   .hdr-word:hover { color: var(--gray-1); }
-  .hdr-ws-toggle { position: relative; display: inline-flex; align-items: baseline; margin-left: 4px; }
-  .hdr-ws-caret { font-size: 9px; color: var(--gray-2); cursor: pointer; padding: 3px 5px; border-radius: 5px; }
-  .hdr-ws-caret:hover { background: var(--hover); color: var(--ink); }
+  .hdr-ws-toggle { position: relative; display: inline-flex; align-items: baseline; }
   .hdr-ws-pop {
     display: none; position: absolute; top: 100%; left: 0; margin-top: 6px; min-width: 170px;
     background: var(--surface); border: 1px solid var(--line); border-radius: 9px; padding: 5px;
@@ -189,6 +192,12 @@
   }
   .tl-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--gray-1); }
   .tl-cat { font-size: 9.5px; color: var(--gray-2); flex-shrink: 0; }
+  .cal-item { display: flex; align-items: baseline; gap: 9px; padding: 5px 0; border-bottom: 1px solid var(--line-soft); font-size: 11.5px; }
+  .cal-item:last-child { border-bottom: none; }
+  .cal-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; text-align: left; }
+  .cal-main .tl-label { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cal-main .tl-cat { font-size: 9.5px; color: var(--gray-2); }
+  .cal-time { font-weight: 700; color: var(--ink); flex-shrink: 0; margin-left: auto; text-align: right; white-space: nowrap; padding-left: 12px; }
   .st-row { display: flex; align-items: center; gap: 8px; font-size: 11px; padding: 4px 0; }
   .st-label { flex-shrink: 0; width: 92px; color: var(--gray-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .st-bar-wrap { flex: 1; height: 5px; background: var(--line-soft); border-radius: 3px; overflow: hidden; }
@@ -410,6 +419,11 @@
     color: var(--gray-2); cursor: pointer; user-select: none;
   }
   .add-row:hover { color: var(--ink); background: var(--hover); }
+  .cat-notes {
+    display: none; min-height: 300px; padding: 4px 2px 100px; font-size: 13px; line-height: 1.6;
+    color: var(--ink); outline: none;
+  }
+  .cat-notes:empty:before { content: 'Start typing\2026'; color: var(--gray-2); }
 
   /* ---------- doc pages (rich content: headings, tables, nested lists) ---------- */
   .doc { max-width: 720px; margin: 0 auto; padding: 40px 32px 100px; }
@@ -534,9 +548,9 @@
   .modal-btn.primary:hover { opacity: .85; }
 
   /* ---------- right-edge hover panel: appearance / account / pages ---------- */
-  .edge-hover { position: fixed; top: 0; right: 0; width: 14px; height: 100vh; z-index: 40; }
+  .edge-hover { position: fixed; top: 0; right: 0; width: 24px; height: 100vh; z-index: 40; }
   .side-panel {
-    position: fixed; top: 0; right: 0; height: 100vh; width: 240px; z-index: 41;
+    position: fixed; top: 0; right: 0; height: 100vh; width: 300px; z-index: 41;
     background: var(--surface-glass); border-left: 1px solid var(--line);
     padding: 22px 18px; overflow-y: auto; transform: translateX(100%);
     transition: transform .22s cubic-bezier(.3,1,.4,1);
@@ -545,7 +559,7 @@
   }
   .sp-wrap:hover .side-panel, body.sp-pinned .side-panel { transform: translateX(0); }
   header, #app { transition: margin-right .22s cubic-bezier(.3,1,.4,1); }
-  body.sp-pinned header, body.sp-pinned #app { margin-right: 240px; }
+  body.sp-pinned header, body.sp-pinned #app { margin-right: 300px; }
   .sp-handle {
     position: fixed; top: 50%; right: 0; transform: translateY(-50%); z-index: 42;
     width: 16px; height: 46px; display: flex; align-items: center; justify-content: center;
@@ -555,7 +569,7 @@
     transition: right .22s cubic-bezier(.3,1,.4,1), color .15s;
   }
   .sp-handle:hover { color: var(--ink); }
-  .sp-wrap:hover .sp-handle, body.sp-pinned .sp-handle { right: 240px; }
+  .sp-wrap:hover .sp-handle, body.sp-pinned .sp-handle { right: 300px; }
 
   /* ---------- collapse/expand toggle for pages that have subpages ---------- */
   .prow-collapse, .sp-collapse {
@@ -734,9 +748,8 @@
 
 <header>
   <div class="hdr-left">
-    <span class="hdr-word" onclick="goHome()">Studio Aa</span>
     <span class="hdr-ws-toggle">
-      <span class="hdr-ws-caret" onclick="event.stopPropagation(); toggleHeaderWsPop()" title="Switch workspace">&#8964;</span>
+      <span class="hdr-word" onclick="handleHdrWordClick()" title="Switch workspace">Studio Aa</span>
       <div class="hdr-ws-pop" id="hdr-ws-pop"></div>
     </span>
     <span id="crumb"></span>
@@ -763,10 +776,10 @@
       <span class="theme-chip" data-theme="prism" onclick="setTheme('prism')">Prism</span>
     </div>
     <div class="hue-picker" id="hue-picker">
-      <span class="hue-swatch" data-hue="white" style="background:#ffffff;" onclick="setHue('white')" title="White"></span>
-      <span class="hue-swatch" data-hue="blue" style="background:#dbe9ff;" onclick="setHue('blue')" title="Blue"></span>
-      <span class="hue-swatch" data-hue="green" style="background:#dbf4e0;" onclick="setHue('green')" title="Green"></span>
-      <span class="hue-swatch" data-hue="orange" style="background:#ffe4c4;" onclick="setHue('orange')" title="Orange"></span>
+      <span class="hue-swatch" data-hue="white" style="background:#f0ead9;" onclick="setHue('white')" title="Eggshell"></span>
+      <span class="hue-swatch" data-hue="blue" style="background:#b7d4f2;" onclick="setHue('blue')" title="Ice blue"></span>
+      <span class="hue-swatch" data-hue="green" style="background:#b9e0c5;" onclick="setHue('green')" title="Deep green"></span>
+      <span class="hue-swatch" data-hue="orange" style="background:#ff9d6c;" onclick="setHue('orange')" title="Tangerine"></span>
     </div>
     <div class="sp-row">
       <span>Signal only</span>
@@ -843,6 +856,28 @@
     <div class="modal-actions">
       <button class="modal-btn" onclick="closeImport()">Cancel</button>
       <button class="modal-btn primary" onclick="submitImport()">Create page</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="new-cat-backdrop" onclick="if(event.target===this) closeNewCatModal()">
+  <div class="modal-card">
+    <div class="modal-title">New category</div>
+    <div class="modal-hint">Pick the kind of tab to add.</div>
+    <div class="pin-type-grid" id="new-cat-type-grid" style="grid-template-columns:1fr 1fr;">
+      <div class="pin-type-opt" data-type="sheet" onclick="chooseNewCatType('sheet')">
+        <div class="pin-type-name">Sheet</div>
+        <div class="pin-type-sub">Table of rows</div>
+      </div>
+      <div class="pin-type-opt" data-type="notes" onclick="chooseNewCatType('notes')">
+        <div class="pin-type-name">Page</div>
+        <div class="pin-type-sub">Freeform notes</div>
+      </div>
+    </div>
+    <input class="modal-input" id="new-cat-name" placeholder="Category name" onkeydown="if(event.key==='Enter') submitNewCat()" />
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeNewCatModal()">Cancel</button>
+      <button class="modal-btn primary" onclick="submitNewCat()">Create</button>
     </div>
   </div>
 </div>
@@ -969,8 +1004,8 @@
   function applyHue() {
     const mode = localStorage.getItem('hq_theme') || 'light';
     const hue = localStorage.getItem('hq_hue') || 'white';
-    document.body.classList.remove('hue-blue', 'hue-green', 'hue-orange');
-    if (mode === 'light' && hue !== 'white') document.body.classList.add('hue-' + hue);
+    document.body.classList.remove('hue-white', 'hue-blue', 'hue-green', 'hue-orange');
+    if (mode === 'light') document.body.classList.add('hue-' + hue);
     document.querySelectorAll('.hue-swatch').forEach(el => el.classList.toggle('on', el.dataset.hue === hue));
     const picker = document.getElementById('hue-picker');
     if (picker) picker.style.display = mode === 'light' ? 'flex' : 'none';
@@ -1546,13 +1581,14 @@
     if (!s.events.length) return '<div class="widget-empty">Nothing on your calendar this week.</div>';
     return s.events.map(ev => {
       const start = ev.start ? new Date(ev.start) : null;
-      const when = !start ? '' : ev.allDay
-        ? fmtShort(start)
-        : fmtShort(start) + ' \u00b7 ' + start.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-      return '<div class="tl-item">' +
+      const dateStr = start ? fmtShort(start) : '';
+      const timeStr = start ? (ev.allDay ? 'All day' : start.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })) : '';
+      return '<div class="cal-item">' +
+        '<div class="cal-main">' +
         '<span class="tl-label">' + esc(ev.summary) + '</span>' +
-        (ev.location ? '<span class="tl-cat">' + esc(ev.location) + '</span>' : '') +
-        '<span class="tl-date">' + esc(when) + '</span></div>';
+        '<span class="tl-cat">' + esc(dateStr) + (ev.location ? ' \u00b7 ' + esc(ev.location) : '') + '</span>' +
+        '</div>' +
+        '<span class="cal-time">' + esc(timeStr) + '</span></div>';
     }).join('');
   }
   function loadCalendarWidget() {
@@ -1589,11 +1625,15 @@
       }
     });
     // pages pinned to the home dashboard surface first, so they're easy to
-    // find at a glance from the pages tab too
+    // find at a glance from the pages tab too; within that, notes/docs float
+    // above table pages, which settle to the bottom
     roots.sort((a, b) => {
       const ap = pinnedWidgets.some(w => w.sourceKey === a.key) ? 0 : 1;
       const bp = pinnedWidgets.some(w => w.sourceKey === b.key) ? 0 : 1;
-      return ap - bp;
+      if (ap !== bp) return ap - bp;
+      const at = a.type === 'doc' ? 0 : 1;
+      const bt = b.type === 'doc' ? 0 : 1;
+      return at - bt;
     });
     const out = [];
     roots.forEach(p => {
@@ -1978,16 +2018,19 @@
   function jobSheetShellHTML() {
     return '<div class="shell"><nav id="nav"></nav><main>' +
       '<div class="page-title" id="page-title" contenteditable spellcheck="false" onkeydown="return blurOnEnter(event)" oninput="renameCat(activeKey, this.textContent)"></div><div class="page-sub" id="page-sub"></div>' +
+      '<div id="sheet-body">' +
       '<div id="filter-bar-slot"></div>' +
       '<div class="table-wrap"><table id="tbl"><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>' +
       '<div class="add-row" onclick="addRow()">+ New</div>' +
+      '</div>' +
+      '<div id="notes-body" class="cat-notes" contenteditable spellcheck="false" oninput="saveCatNotes(activeKey, this.innerHTML)"></div>' +
       '</main></div>';
   }
   function renderNav() {
     document.getElementById('nav').innerHTML =
       cats.map(c => '<div class="cat' + (c.key === activeKey ? ' on' : '') + '" onclick="setActive(\'' + c.key + '\')">' +
         '<span class="cat-name" id="catname-' + c.key + '" contenteditable spellcheck="false" onclick="event.stopPropagation()" onkeydown="return blurOnEnter(event)" oninput="renameCat(\'' + c.key + '\', this.textContent)">' + esc(c.label) + '</span>' +
-        '<span class="cat-n">' + c.rows.length + '</span>' +
+        '<span class="cat-n">' + (catType(c) === 'notes' ? '' : c.rows.length) + '</span>' +
         '<button class="cat-del" onclick="event.stopPropagation(); delCat(\'' + c.key + '\')" title="Delete">\u00d7</button>' +
         '</div>').join('') +
       '<div class="cat-add" onclick="addCat()">+ New category</div>';
@@ -2004,13 +2047,38 @@
       if (pt && pt.textContent !== text) pt.textContent = text;
     }
   }
+  let newCatType = 'sheet';
   function addCat() {
-    const label = prompt('What\u2019s the new category called?');
+    newCatType = 'sheet';
+    document.getElementById('new-cat-name').value = '';
+    document.querySelectorAll('#new-cat-type-grid .pin-type-opt').forEach(el => el.classList.toggle('on', el.dataset.type === newCatType));
+    document.getElementById('new-cat-backdrop').classList.add('show');
+    setTimeout(() => document.getElementById('new-cat-name').focus(), 0);
+  }
+  function chooseNewCatType(type) {
+    newCatType = type;
+    document.querySelectorAll('#new-cat-type-grid .pin-type-opt').forEach(el => el.classList.toggle('on', el.dataset.type === type));
+  }
+  function closeNewCatModal() { document.getElementById('new-cat-backdrop').classList.remove('show'); }
+  function submitNewCat() {
+    const label = document.getElementById('new-cat-name').value;
     if (!label || !label.trim()) return;
     const key = label.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now().toString(36).slice(-4);
-    cats.push({ key, label: label.trim(), cols: ['Item', 'Status', 'Notes'], rows: [['', '', '']] });
+    if (newCatType === 'notes') {
+      cats.push({ key, label: label.trim(), type: 'notes', notes: '' });
+    } else {
+      cats.push({ key, label: label.trim(), type: 'sheet', cols: ['Item', 'Status', 'Notes'], rows: [['', '', '']] });
+    }
     saveCats();
+    closeNewCatModal();
     setActive(key);
+  }
+  function catType(c) { return c.type || 'sheet'; }
+  function saveCatNotes(key, html) {
+    const c = cats.find(x => x.key === key);
+    if (!c) return;
+    c.notes = html;
+    saveCats();
   }
   function delCat(key) {
     if (cats.length <= 1) { showToast('You need at least one category.'); return; }
@@ -2166,9 +2234,20 @@
 
   function renderTable() {
     const c = activeCat();
+    document.getElementById('page-title').textContent = c.label;
+    const sheetBody = document.getElementById('sheet-body');
+    const notesBody = document.getElementById('notes-body');
+    if (catType(c) === 'notes') {
+      sheetBody.style.display = 'none';
+      notesBody.style.display = 'block';
+      document.getElementById('page-sub').textContent = 'Freeform notes';
+      if (notesBody.innerHTML !== (c.notes || '')) notesBody.innerHTML = c.notes || '';
+      return;
+    }
+    sheetBody.style.display = '';
+    notesBody.style.display = 'none';
     ensureColTypes(c);
     const visible = c.rows.map((row, ri) => ({ row, ri })).filter(x => passesFilter(c, x.row));
-    document.getElementById('page-title').textContent = c.label;
     document.getElementById('page-sub').textContent = visible.length + (visible.length === 1 ? ' row' : ' rows') +
       (visible.length !== c.rows.length ? ' of ' + c.rows.length : '') + ' \u00b7 click any cell to edit';
     document.getElementById('thead').innerHTML = '<tr>' +
@@ -2872,9 +2951,14 @@
   function closeHeaderWsPop() {
     document.getElementById('hdr-ws-pop').classList.remove('show');
   }
+  function handleHdrWordClick() {
+    if (view === 'home') { toggleHeaderWsPop(); return; }
+    closeHeaderWsPop();
+    goHome();
+  }
   document.addEventListener('click', function (e) {
     const pop = document.getElementById('hdr-ws-pop');
-    if (pop && pop.classList.contains('show') && !pop.contains(e.target) && !e.target.closest('.hdr-ws-caret')) closeHeaderWsPop();
+    if (pop && pop.classList.contains('show') && !pop.contains(e.target) && !e.target.closest('.hdr-word')) closeHeaderWsPop();
   });
 
   function createNewWorkspace() {
