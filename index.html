@@ -48,7 +48,7 @@
   }
   body.prism .home .page-list, body.prism .home .widget-card,
   body.prism .side-panel, body.prism .onboard-card, body.prism .greet-card,
-  body.prism .modal-card, body.prism .hdr-ws-pop, body.prism .toast {
+  body.prism .modal-card, body.prism .toast {
     /* gradient "border" as a background layer (clipped to border-box) instead of
        border-image \u2014 border-image ignores border-radius entirely in every
        browser, which was making the rainbow edge draw as a hard square poking
@@ -869,8 +869,8 @@
     <div class="sp-pages" id="sp-pages"></div>
     <div class="sp-tool" onclick="addPage()"><span class="sp-tool-i">+</span>New page</div>
   </div>
-  <div class="sp-section">
-    <div class="sp-label">Blocks</div>
+  <div class="sp-section" id="sp-blocks-section">
+    <div class="sp-label">Add to this page</div>
     <div class="sp-tools">
       <div class="sp-tool" onclick="insertBlock('h2')"><span class="sp-tool-i">H1</span>Heading 1</div>
       <div class="sp-tool" onclick="insertBlock('h3')"><span class="sp-tool-i">H2</span>Heading 2</div>
@@ -1861,6 +1861,14 @@
 
   /* ---------- side panel: appearance / account / pages, hover-out from right edge ---------- */
   function renderSidePanel() {
+    // "Add to this page" (the block-insert tools) only makes sense while
+    // actually looking at a doc page \u2014 insertBlock() silently creates a
+    // brand-new page and navigates you away to it when there's no doc page
+    // open, which read as the panel randomly hijacking whatever you were
+    // doing on home/job-sheet/table pages. Hiding it outside doc pages keeps
+    // the panel's contents tied to what's actually on screen.
+    const blocksSection = document.getElementById('sp-blocks-section');
+    if (blocksSection) blocksSection.style.display = (curPage() && curPage().type === 'doc') ? '' : 'none';
     document.getElementById('sp-pages').innerHTML = orderedPagesForDisplay().map(entry => {
       const p = entry.page;
       const collapsed = collapsedPages.has(p.key);
@@ -2755,7 +2763,17 @@
   function layoutDashboardMasonry() {
     const grid = document.querySelector('.home-grid');
     if (!grid) return;
-    const cards = Array.from(grid.children).filter(el => el.classList.contains('dash-card'));
+    // Must find cards at ANY depth (querySelectorAll), not just direct
+    // children \u2014 this runs repeatedly on the same grid (calendar auto-
+    // refresh polls every tick, focus-mode toggle re-runs it too) and after
+    // the first pass, half-width cards are nested inside .dash-cluster/
+    // .dash-col wrappers. Looking only at direct children on a later pass
+    // found zero half-cards (they're one level deeper), then `grid.innerHTML
+    // = ''` below wiped out those wrapper divs \u2014 and every card inside them
+    // \u2014 permanently. That's what was making dashboard cards (pinned widgets,
+    // schedule/status, sometimes the pages card) vanish after a few seconds
+    // on the home screen.
+    const cards = Array.from(grid.querySelectorAll('.dash-card'));
     if (!cards.length) return;
     const heights = new Map();
     cards.forEach(el => heights.set(el, el.offsetHeight));
