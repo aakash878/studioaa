@@ -2913,6 +2913,12 @@
     const frag = document.createDocumentFragment();
     runs.forEach(run => {
       if (run.type === 'full') { frag.appendChild(run.el); return; }
+      // A lone leftover half-card (nothing else queued up beside it) would
+      // sit in a two-column cluster next to a completely empty column \u2014
+      // an ugly, obviously "unfinished" gap. Instead let it stretch to fill
+      // the whole row, exactly like a full-width card, so the bento grid
+      // always reads as one solid block with no dead space at the bottom.
+      if (run.cards.length === 1) { frag.appendChild(run.cards[0]); return; }
       const cluster = document.createElement('div');
       cluster.className = 'dash-cluster';
       const colA = document.createElement('div'); colA.className = 'dash-col';
