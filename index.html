@@ -533,7 +533,7 @@
   .doc-additem:hover, .doc-addblock:hover { color: var(--ink); }
   .addblock-wrap { position: relative; display: inline-block; }
   .addblock-menu {
-    display: none; position: absolute; bottom: 100%; left: 15px; margin-bottom: 4px;
+    display: none; position: absolute; top: 100%; left: 15px; margin-top: 4px;
     background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 4px;
     box-shadow: 0 8px 24px rgba(0,0,0,.14); min-width: 158px; z-index: 30;
     flex-direction: column; gap: 1px;
@@ -2787,10 +2787,10 @@
      whichever category is currently active on the page (see curCat()).
      ===================================================================== */
   // Every brand-new doc (a page, a note, or a "Page" category) starts with
-  // its own heading block already in place instead of a totally blank
-  // canvas \u2014 gives you an obvious title box to type into immediately
-  // rather than having to know to click "+ Add section" first.
-  function defaultDocBlocks(label) { return [{ t: 'h2', html: label || 'Untitled' }]; }
+  // a single plain text box \u2014 no heading, no type picker \u2014 so you can
+  // just start typing immediately. Headings, tables, toggles, etc. are all
+  // one click away via "+ Add section" if you want them.
+  function defaultDocBlocks(label) { return [{ t: 'p', html: 'Type something\u2026' }]; }
   function itemRef(items, path) {
     let arr = items;
     for (let i = 0; i < path.length - 1; i++) arr = arr[path[i]].sub;
@@ -3074,7 +3074,7 @@
     // Rename it inline once you're in (same as any other page title).
     const name = 'New page';
     const key = 'note-' + Date.now().toString(36).slice(-6);
-    pages.push({ key: key, label: name, type: 'doc', parent: null, blocks: [{ t: 'h2', html: name }] });
+    pages.push({ key: key, label: name, type: 'doc', parent: null, blocks: defaultDocBlocks(name) });
     savePages();
     openPage(key);
   }
