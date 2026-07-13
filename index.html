@@ -254,8 +254,9 @@
     margin-top: 2px;
   }
   .cal-connect:hover { background: var(--accent); color: var(--accent-ink); }
-  .tl-item { display: flex; align-items: baseline; gap: 9px; padding: 5px 0; border-bottom: 1px solid var(--line-soft); font-size: 11.5px; }
+  .tl-item { display: flex; align-items: baseline; gap: 9px; padding: 5px 0; border-bottom: 1px solid var(--line-soft); font-size: 11.5px; cursor: pointer; border-radius: 5px; }
   .tl-item:last-child { border-bottom: none; }
+  .tl-item:hover { background: var(--hover); }
   .tl-date {
     font-weight: 700; color: var(--ink); flex-shrink: 0; margin-left: auto;
     text-align: right; white-space: nowrap; padding-left: 12px;
@@ -273,13 +274,15 @@
   }
   .cal-date { font-size: 9.5px; color: var(--gray-2); white-space: nowrap; }
   .cal-time { font-weight: 700; color: var(--ink); white-space: nowrap; }
-  .st-row { display: flex; align-items: center; gap: 8px; font-size: 11px; padding: 4px 0; }
+  .st-row { display: flex; align-items: center; gap: 8px; font-size: 11px; padding: 4px 0; cursor: pointer; border-radius: 5px; }
+  .st-row:hover { background: var(--hover); }
   .st-label { flex-shrink: 0; width: 92px; color: var(--gray-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .st-bar-wrap { flex: 1; height: 5px; background: var(--line-soft); border-radius: 3px; overflow: hidden; }
   .st-bar { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
   .st-count { font-size: 10px; color: var(--gray-2); width: 16px; text-align: right; flex-shrink: 0; }
-  .pr-item { display: flex; align-items: center; gap: 12px; padding: 8px 4px; border-bottom: 1px solid var(--line-soft); font-size: 12.5px; }
+  .pr-item { display: flex; align-items: center; gap: 12px; padding: 8px 4px; border-bottom: 1px solid var(--line-soft); font-size: 12.5px; cursor: pointer; border-radius: 5px; }
   .pr-item:last-child { border-bottom: none; }
+  .pr-item:hover { background: var(--hover); }
   .pr-rank {
     width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: var(--accent-ink);
     font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
@@ -368,6 +371,18 @@
   }
   .prow:hover .prow-del { display: inline; }
   .prow-del:hover { color: var(--ink); }
+  .prow-builtin-tag {
+    font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--gray-2); flex-shrink: 0;
+  }
+  .prow-move {
+    display: none; border: none; background: none; color: var(--gray-2); cursor: pointer;
+    font-size: 11px; flex-shrink: 0; padding: 2px 5px; border-radius: 20px; border: 1px solid var(--line);
+  }
+  .prow:hover .prow-move { display: inline-block; }
+  .prow-move:hover { color: var(--ink); background: var(--hover); }
+  .prow-move:disabled { opacity: .3; cursor: default; }
+  .prow-move:disabled:hover { background: none; color: var(--gray-2); }
   .prow-add {
     display: flex; align-items: center; gap: 10px; padding: 9px 12px; cursor: pointer;
     font-size: 13px; font-weight: 600; color: var(--gray-2);
@@ -1669,7 +1684,7 @@
       fetch('/api/workspaces/' + currentWorkspaceId + '/data', {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ pages, categories: cats, widgets: { labels: widgetLabels, pinned: pinnedWidgets, order: dashboardOrder, sizes: dashboardSizes } })
+        body: JSON.stringify({ pages, categories: cats, widgets: { labels: widgetLabels, pinned: pinnedWidgets, order: dashboardOrder, sizes: dashboardSizes, hidden: Array.from(hiddenBuiltins) } })
       }).catch(() => {});
     }, 400);
   }
@@ -1691,6 +1706,11 @@
     }
     return isNaN(d.getTime()) ? null : d;
   }
+  // Jumps straight into the job-sheet page on the given category tab \u2014
+  // used so clicking any row inside a dashboard widget (schedule/status/
+  // priority) lands you on the real, editable table it was built from,
+  // instead of the widget being a dead end you can only look at.
+  function openJobCat(catKey) { openPage('job-sheet'); setActive(catKey); }
   function scheduleItems() {
     const out = [];
     function pull(catKey, dateCol, labelCol) {
@@ -1700,7 +1720,7 @@
       if (di < 0 || li < 0) return;
       c.rows.forEach(r => {
         const d = parseLooseDate(r[di]);
-        if (d) out.push({ date: d, label: r[li], cat: c.label });
+        if (d) out.push({ date: d, label: r[li], cat: c.label, catKey: c.key });
       });
     }
     pull('jobs', 'Delivery Date', 'Client');
@@ -1723,7 +1743,8 @@
   function scheduleHTML() {
     const win = upcomingSchedule(8);
     if (!win.length) return '<div class="widget-empty">Nothing dated yet.</div>';
-    return win.map(it => '<div class="tl-item"><span class="tl-date">' + fmtShort(it.date) + '</span>' +
+    return win.map(it => '<div class="tl-item" onclick="openJobCat(\'' + it.catKey + '\')" title="Open ' + esc(it.cat) + '">' +
+      '<span class="tl-date">' + fmtShort(it.date) + '</span>' +
       '<span class="tl-label">' + esc(it.label) + '</span><span class="tl-cat">' + esc(it.cat) + '</span></div>').join('');
   }
   function statusHTML() {
@@ -1736,7 +1757,7 @@
     const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
     const max = Math.max.apply(null, entries.map(e => e[1]).concat(1));
     return entries.map(([label, n]) =>
-      '<div class="st-row"><span class="st-label">' + esc(label) + '</span>' +
+      '<div class="st-row" onclick="openJobCat(\'jobs\')" title="Open Jobs"><span class="st-label">' + esc(label) + '</span>' +
       '<span class="st-bar-wrap"><span class="st-bar" style="width:' + Math.round(n / max * 100) + '%"></span></span>' +
       '<span class="st-count">' + n + '</span></div>'
     ).join('');
@@ -1757,7 +1778,7 @@
       jobs.rows.forEach(r => {
         const status = (r[si] || '').toLowerCase();
         if (status === 'completed' || status === 'cancelled') return;
-        out.push({ name: r[ci], meta: r[si], rank: priorityRank(r[pi]) });
+        out.push({ name: r[ci], meta: r[si], rank: priorityRank(r[pi]), catKey: 'jobs' });
       });
     }
     const jewelry = cats.find(x => x.key === 'jewelry');
@@ -1765,7 +1786,7 @@
       const pi = jewelry.cols.indexOf('Priority'), si = jewelry.cols.indexOf('Status'), oi = jewelry.cols.indexOf('Object');
       jewelry.rows.forEach(r => {
         if ((r[si] || '').toLowerCase() !== 'in progress') return;
-        out.push({ name: r[oi], meta: 'jewelry \u00b7 ' + r[si], rank: priorityRank(r[pi]) });
+        out.push({ name: r[oi], meta: 'jewelry \u00b7 ' + r[si], rank: priorityRank(r[pi]), catKey: 'jewelry' });
       });
     }
     out.sort((a, b) => a.rank - b.rank);
@@ -1775,7 +1796,7 @@
     const items = priorityItems();
     if (!items.length) return '<div class="widget-empty">Nothing urgent right now.</div>';
     return items.map((it, i) =>
-      '<div class="pr-item"><span class="pr-rank">' + (i + 1) + '</span>' +
+      '<div class="pr-item" onclick="openJobCat(\'' + it.catKey + '\')" title="Open"><span class="pr-rank">' + (i + 1) + '</span>' +
       '<span class="pr-name">' + esc(it.name) + '</span>' +
       '<span class="pr-meta">' + esc(it.meta) + '</span></div>'
     ).join('');
@@ -2012,8 +2033,35 @@
     }
   }
   let pagesListHTMLCache = '';
+  // The 4 computed dashboard widgets (schedule/status/priority/calendar)
+  // aren't real pages, so they don't otherwise show up in the Pages list at
+  // all \u2014 meaning there was no way to hide or reorder them except by
+  // hovering the actual card on the dashboard. These rows give them the same
+  // "inventoried in Pages" treatment as a pinned page: a visible entry you
+  // can click into (jumps to the job-sheet source data), hide from home
+  // (the practical equivalent of deleting a built-in), and move up/down.
+  function builtinWidgetRowsHTML() {
+    const order = orderedCardKeys();
+    return BUILTIN_CARD_KEYS.filter(k => k !== 'pages').map(key => {
+      const hidden = hiddenBuiltins.has(key);
+      const label = (widgetLabels[key] || defaultWidgetLabels()[key]).title;
+      const idx = order.indexOf(key);
+      const canOpen = key !== 'calendar';
+      return '<div class="prow prow-builtin"' + (canOpen ? ' onclick="openPage(\'job-sheet\')"' : '') + '>' +
+        '<span class="prow-collapse-spacer"></span>' +
+        '<span class="prow-name">' + esc(label) + '</span>' +
+        '<span class="prow-builtin-tag">dashboard widget</span>' +
+        '<span class="prow-spacer"></span>' +
+        (!hidden ? '<button class="prow-move" onclick="event.stopPropagation(); moveCard(\'' + key + '\', -1)" title="Move up"' + (idx <= 0 ? ' disabled' : '') + '>\u2191</button>' +
+          '<button class="prow-move" onclick="event.stopPropagation(); moveCard(\'' + key + '\', 1)" title="Move down"' + (idx === order.length - 1 ? ' disabled' : '') + '>\u2193</button>' : '') +
+        (hidden
+          ? '<button class="prow-pin" onclick="event.stopPropagation(); toggleBuiltinVisible(\'' + key + '\')" title="Show on home dashboard">+ show</button>'
+          : '<span class="prow-pin-badge" onclick="event.stopPropagation(); toggleBuiltinVisible(\'' + key + '\')" title="On home dashboard &mdash; click to hide">on home</span>') +
+        '</div>';
+    }).join('');
+  }
   function homeHTML() {
-    const pagesListHTML = orderedPagesForDisplay().map(entry => {
+    const pagesListHTML = builtinWidgetRowsHTML() + orderedPagesForDisplay().map(entry => {
       const p = entry.page;
       const pinned = pinnedWidgets.find(w => w.sourceKey === p.key);
       const collapsed = collapsedPages.has(p.key);
@@ -3406,9 +3454,21 @@
      ===================================================================== */
   let dashboardOrder = [];
   let dashboardSizes = {};
+  // Which built-in dashboard widgets (schedule/status/priority/calendar) are
+  // hidden from home \u2014 the practical equivalent of "deleting" a built-in,
+  // since they're computed views rather than real pages that can be removed
+  // outright. Managed from the Pages list, same spot pinned pages are managed.
+  let hiddenBuiltins = new Set();
   const BUILTIN_CARD_KEYS = ['pages', 'schedule', 'status', 'priority', 'calendar'];
   const DEFAULT_CARD_SIZE = { pages: 'full', schedule: 'half', status: 'half', priority: 'full', calendar: 'full' };
-  function currentCardKeys() { return BUILTIN_CARD_KEYS.concat(pinnedWidgets.map(w => w.id)); }
+  function toggleBuiltinVisible(key) {
+    if (hiddenBuiltins.has(key)) hiddenBuiltins.delete(key); else hiddenBuiltins.add(key);
+    saveWorkspaceData();
+    render();
+  }
+  function currentCardKeys() {
+    return BUILTIN_CARD_KEYS.filter(k => k === 'pages' || !hiddenBuiltins.has(k)).concat(pinnedWidgets.map(w => w.id));
+  }
   function orderedCardKeys() {
     const all = currentCardKeys();
     const known = dashboardOrder.filter(k => all.indexOf(k) !== -1);
@@ -3684,6 +3744,7 @@
       pinnedWidgets = (data.widgets && data.widgets.pinned) || [];
       dashboardOrder = (data.widgets && data.widgets.order) || [];
       dashboardSizes = (data.widgets && data.widgets.sizes) || {};
+      hiddenBuiltins = new Set((data.widgets && data.widgets.hidden) || []);
       activeKey = localStorage.getItem('hq_active_cat') || cats[0].key;
       maybeLoadLolaDemo(); // also sets hq_onboarded, so maybeOnboard() below is a no-op when it fires
       render();
