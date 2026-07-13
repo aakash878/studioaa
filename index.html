@@ -1710,7 +1710,23 @@
   // used so clicking any row inside a dashboard widget (schedule/status/
   // priority) lands you on the real, editable table it was built from,
   // instead of the widget being a dead end you can only look at.
-  function openJobCat(catKey) { openPage('job-sheet'); setActive(catKey); }
+  // Opens the job-sheet category almost-full-screen in the same in-place
+  // preview overlay used for pinned page widgets (see openPagePreview
+  // below), instead of navigating the whole app away from the dashboard.
+  // Editing inside works exactly like the real job-sheet tab \u2014 it's the
+  // same renderNav()/renderTable() functions, just rendered into the
+  // overlay's container and reading/writing the same live `cats` data.
+  function openJobCat(catKey) {
+    previewPrevView = view;
+    view = 'job-sheet';
+    activeKey = catKey;
+    localStorage.setItem('hq_active_cat', catKey);
+    const body = document.getElementById('page-preview-body');
+    body.innerHTML = jobSheetShellHTML();
+    renderNav();
+    renderTable();
+    document.getElementById('page-preview-backdrop').classList.add('show');
+  }
   function scheduleItems() {
     const out = [];
     function pull(catKey, dateCol, labelCol) {
@@ -2047,7 +2063,7 @@
       const label = (widgetLabels[key] || defaultWidgetLabels()[key]).title;
       const idx = order.indexOf(key);
       const canOpen = key !== 'calendar';
-      return '<div class="prow prow-builtin"' + (canOpen ? ' onclick="openPage(\'job-sheet\')"' : '') + '>' +
+      return '<div class="prow prow-builtin"' + (canOpen ? ' onclick="openJobCat(\'jobs\')"' : '') + '>' +
         '<span class="prow-collapse-spacer"></span>' +
         '<span class="prow-name">' + esc(label) + '</span>' +
         '<span class="prow-builtin-tag">dashboard widget</span>' +
@@ -3431,11 +3447,12 @@
       w.type === 'timeline' ? pinnedTimelineHTML(src) :
       w.type === 'checklist' ? pinnedChecklistHTML(src) :
       w.type === 'stat' ? pinnedStatHTML(src) : pinnedSheetHTML(src);
-    // Clicking the card itself opens the big blurred edit box (title, view
-    // type, connected page, unpin) \u2014 that's the primary action now, so the
-    // only thing left as a standalone quick-action is Unpin.
+    // Clicking the card opens its real source page/content almost-full-
+    // screen (openPagePreview) so you can actually edit it right there \u2014
+    // widget settings (rename, view type, unpin) live on the pencil icon in
+    // the card's hover controls instead, so they don't fight for the click.
     return '<div class="widget-card hg-pinned' + (src ? ' hg-clickable' : '') + '"' +
-      (src ? ' onclick="openPinModalForWidget(\'' + w.id + '\')" title="Click to edit this widget"' : '') + '>' +
+      (src ? ' onclick="openPagePreview(\'' + w.sourceKey + '\')" title="Click to edit"' : '') + '>' +
       '<div class="pin-actions" onclick="event.stopPropagation()">' +
       '<button class="pin-unpin" onclick="unpinWidget(\'' + w.id + '\')" title="Unpin from home">Unpin</button>' +
       '</div>' +
