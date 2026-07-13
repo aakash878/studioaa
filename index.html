@@ -2229,7 +2229,7 @@
       if (!p) return;
       ensurePageCats(p);
       if (newCatType === 'notes') {
-        p.cats.push({ key, label: label.trim(), type: 'doc', blocks: [] });
+        p.cats.push({ key, label: label.trim(), type: 'doc', blocks: defaultDocBlocks(label.trim()) });
       } else {
         p.cats.push({ key, label: label.trim(), type: 'table', cols: ['Item', 'Status', 'Notes'], rows: [['', '', '']] });
       }
@@ -2688,6 +2688,11 @@
      same way — "+ Add section" / "+ add item" at every level. Lives inside
      whichever category is currently active on the page (see curCat()).
      ===================================================================== */
+  // Every brand-new doc (a page, a note, or a "Page" category) starts with
+  // its own heading block already in place instead of a totally blank
+  // canvas \u2014 gives you an obvious title box to type into immediately
+  // rather than having to know to click "+ Add section" first.
+  function defaultDocBlocks(label) { return [{ t: 'h2', html: label || 'Untitled' }]; }
   function itemRef(items, path) {
     let arr = items;
     for (let i = 0; i < path.length - 1; i++) arr = arr[path[i]].sub;
