@@ -364,6 +364,14 @@
   .cat:hover .cat-del { display: inline; }
   .cat:hover .cat-n { display: none; }
   .cat-del:hover { color: var(--ink); }
+  .cat-move {
+    display: none; color: var(--gray-2); cursor: pointer; font-size: 13px;
+    flex-shrink: 0; line-height: 1; padding: 0 1px; font-weight: 700;
+  }
+  .cat:hover .cat-move { display: inline; }
+  .cat-move:hover { color: var(--ink); }
+  .cat-move-disabled { visibility: hidden; pointer-events: none; }
+  .cat.on .cat-move { color: var(--accent-ink); opacity: .6; }
   .cat-add {
     display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 6px;
     font-size: 12.5px; color: var(--gray-2); cursor: pointer; margin-top: 4px;
@@ -1815,18 +1823,25 @@
     const p = pages.find(x => x.key === key);
     if (!p) return;
     p.label = text;
+    // While a page still has just one category, keep that category's own
+    // label in sync too \u2014 it's the same title shown in the in-page sidebar
+    // tab and doc heading, and renaming from the home screen shouldn't leave
+    // those stale.
+    if (p.cats && p.cats.length === 1) p.cats[0].label = text;
     savePages();
     const rowEl = document.getElementById('prowname-' + key);
     if (rowEl && rowEl.textContent !== text) rowEl.textContent = text;
     const spEl = document.getElementById('spname-' + key);
     if (spEl && spEl.textContent !== text) spEl.textContent = text;
-    const navEl = document.getElementById('pagenav-' + key);
-    if (navEl && navEl.textContent !== text) navEl.textContent = text;
     if (view === key) {
       const pt = document.getElementById('pt-title');
       if (pt && pt.textContent !== text) pt.textContent = text;
       const crumbEl = document.querySelector('#crumb .crumb-cur');
       if (crumbEl && crumbEl.textContent !== text) crumbEl.textContent = text;
+      if (p.cats && p.cats.length === 1) {
+        const catNavEl = document.getElementById('pagecatname-' + p.cats[0].key);
+        if (catNavEl && catNavEl.textContent !== text) catNavEl.textContent = text;
+      }
     }
   }
   let pagesListHTMLCache = '';
@@ -1868,7 +1883,7 @@
     // doing on home/job-sheet/table pages. Hiding it outside doc pages keeps
     // the panel's contents tied to what's actually on screen.
     const blocksSection = document.getElementById('sp-blocks-section');
-    if (blocksSection) blocksSection.style.display = (curPage() && curPage().type === 'doc') ? '' : 'none';
+    if (blocksSection) blocksSection.style.display = (curPage() && curCat() && curCat().type === 'doc') ? '' : 'none';
     document.getElementById('sp-pages').innerHTML = orderedPagesForDisplay().map(entry => {
       const p = entry.page;
       const collapsed = collapsedPages.has(p.key);
@@ -2178,9 +2193,23 @@
       if (pt && pt.textContent !== text) pt.textContent = text;
     }
   }
+  // Reused for both job-sheet's own categories AND every standalone page's
+  // per-page categories (the "add tables or docs" nav) \u2014 same modal, same
+  // two tile choices, submitNewCat() just routes the result based on which
+  // context opened it so the two systems don't need two separate modals.
   let newCatType = 'sheet';
+  let newCatTarget = 'jobsheet';
   function addCat() {
     newCatType = 'sheet';
+    newCatTarget = 'jobsheet';
+    document.getElementById('new-cat-name').value = '';
+    document.querySelectorAll('#new-cat-type-grid .pin-type-opt').forEach(el => el.classList.toggle('on', el.dataset.type === newCatType));
+    document.getElementById('new-cat-backdrop').classList.add('show');
+    setTimeout(() => document.getElementById('new-cat-name').focus(), 0);
+  }
+  function addPageCat() {
+    newCatType = 'sheet';
+    newCatTarget = 'page';
     document.getElementById('new-cat-name').value = '';
     document.querySelectorAll('#new-cat-type-grid .pin-type-opt').forEach(el => el.classList.toggle('on', el.dataset.type === newCatType));
     document.getElementById('new-cat-backdrop').classList.add('show');
@@ -2195,6 +2224,22 @@
     const label = document.getElementById('new-cat-name').value;
     if (!label || !label.trim()) return;
     const key = label.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now().toString(36).slice(-4);
+    if (newCatTarget === 'page') {
+      const p = curPage();
+      if (!p) return;
+      ensurePageCats(p);
+      if (newCatType === 'notes') {
+        p.cats.push({ key, label: label.trim(), type: 'doc', blocks: [] });
+      } else {
+        p.cats.push({ key, label: label.trim(), type: 'table', cols: ['Item', 'Status', 'Notes'], rows: [['', '', '']] });
+      }
+      p.activeCatKey = key;
+      savePages();
+      closeNewCatModal();
+      renderPageNav();
+      renderActivePage();
+      return;
+    }
     if (newCatType === 'notes') {
       cats.push({ key, label: label.trim(), type: 'notes', notes: '' });
     } else {
@@ -2441,126 +2486,208 @@
   }
 
   /* =====================================================================
-     STANDALONE PAGES: everything on the home list besides job sheet —
-     same table mechanics, and (like job sheet) a left nav so you can jump
-     straight to any other page without going back to the home screen.
+     STANDALONE PAGES: everything on the home list besides job sheet. Every
+     page now gets its own job-sheet-style left sidebar of categories (add
+     a table OR a rich doc, rename, delete, reorder) instead of the old
+     "only shows a nav if it has parent/sibling pages" scoping — consistent
+     across every page, exactly like the user asked for, and it's what makes
+     "add tables or docs" to one page possible at all.
      ===================================================================== */
-  // Scoped to just the current page's own family (its parent + siblings, or
-  // itself + its own subpages) — not the entire site's page list. Showing
-  // literally every page in the workspace here was confusing (it duplicated
-  // the whole home list inside a cramped 200px column with no clear
-  // relation to what you were actually looking at).
-  function pagesNavHTML() {
-    const p = pages.find(x => x.key === view);
-    if (!p) return '<div class="cat-add" onclick="goHome()">\u2190 Home</div>';
-    const root = (p.parent && pages.some(x => x.key === p.parent)) ? pages.find(x => x.key === p.parent) : p;
-    const children = pages.filter(x => x.parent === root.key);
-    const rows = [root].concat(children);
-    return '<div class="page-nav-label">' + esc(root.label) + '</div>' +
-      rows.map(pg => {
-        const isChild = pg.key !== root.key;
-        return '<div class="cat' + (pg.key === view ? ' on' : '') + (isChild ? ' cat-child' : '') + '" onclick="openPage(\'' + pg.key + '\')">' +
-          '<span class="cat-name" id="pagenav-' + pg.key + '">' + esc(pg.label) + '</span></div>';
-      }).join('') + '<div class="cat-add" onclick="goHome()">\u2190 Home</div>';
+  // Lazy-migrates a page's legacy flat shape (top-level cols/rows for a
+  // table page, top-level blocks for a doc page) into a single starter
+  // category the first time it's opened post-upgrade, so nothing written
+  // before this feature existed gets lost or needs a manual conversion.
+  function ensurePageCats(p) {
+    if (p.cats && p.cats.length) return;
+    const key = p.key + '-main';
+    const cat = p.type === 'doc'
+      ? { key: key, label: p.label, type: 'doc', blocks: p.blocks || [] }
+      : { key: key, label: p.label, type: 'table', cols: p.cols || ['Item', 'Status', 'Notes'], rows: p.rows || [['', '', '']], colTypes: p.colTypes };
+    p.cats = [cat];
+    p.activeCatKey = key;
   }
-  // Only worth showing the nav when the current page actually has other
-  // pages to jump to right there (it's a subpage with siblings/a parent, or
-  // it has subpages of its own) — a lone new note has nothing to navigate to,
-  // so it stays a plain full-width page instead of sprouting a sidebar.
-  function pageHasNavContext(key) {
-    const p = pages.find(x => x.key === key);
-    if (!p) return false;
-    if (p.parent && pages.some(x => x.key === p.parent)) return true;
-    return pages.some(x => x.parent === p.key);
+  // catFor() takes an explicit page so pinned-widget rendering (which looks
+  // at pages other than the one currently open) can resolve a category too;
+  // curCat() is the everyday shorthand for "the active category on the page
+  // I'm looking at right now".
+  function catFor(p) {
+    if (!p) return null;
+    ensurePageCats(p);
+    return p.cats.find(c => c.key === p.activeCatKey) || p.cats[0];
   }
-  function pageTableShellHTML() {
-    if (!pageHasNavContext(view)) {
-      return '<main style="padding:28px 32px 80px;">' +
-        '<div class="page-title" id="pt-title" contenteditable spellcheck="false" onkeydown="return blurOnEnter(event)" oninput="renamePage(view, this.textContent)"></div><div class="page-sub" id="pt-sub"></div>' +
-        '<div id="pt-filter-bar-slot"></div>' +
-        '<div class="table-wrap"><table id="pt-tbl"><thead id="pt-thead"></thead><tbody id="pt-tbody"></tbody></table></div>' +
-        '<div class="add-row" onclick="ptAddRow()">+ New</div>' +
-        '</main>';
+  function curPage() { return pages.find(p => p.key === view); }
+  function curCat() { return catFor(curPage()); }
+  function setPageActive(key) {
+    const p = curPage();
+    if (!p) return;
+    p.activeCatKey = key;
+    savePages();
+    renderPageNav();
+    renderActivePage();
+  }
+  function renamePageCat(key, text) {
+    const p = curPage();
+    if (!p) return;
+    const c = p.cats.find(x => x.key === key);
+    if (!c) return;
+    c.label = text;
+    // A brand-new page starts with exactly one category — keep the page's
+    // own label (shown on the home list / side panel) in sync with it so
+    // renaming the title in one place is enough. Once a second category is
+    // added, the page-level label freezes and only that tab's name changes,
+    // same as job-sheet.
+    if (p.cats.length === 1) p.label = text;
+    savePages();
+    const navEl = document.getElementById('pagecatname-' + key);
+    if (navEl && navEl.textContent !== text) navEl.textContent = text;
+    if (key === p.activeCatKey) {
+      const pt = document.getElementById('pt-title');
+      if (pt && pt.textContent !== text) pt.textContent = text;
     }
-    return '<div class="shell"><nav id="page-nav">' + pagesNavHTML() + '</nav><main style="padding:28px 32px 80px;">' +
-      '<div class="page-title" id="pt-title" contenteditable spellcheck="false" onkeydown="return blurOnEnter(event)" oninput="renamePage(view, this.textContent)"></div><div class="page-sub" id="pt-sub"></div>' +
+    if (p.cats.length === 1) {
+      const rowEl = document.getElementById('prowname-' + p.key);
+      if (rowEl && rowEl.textContent !== text) rowEl.textContent = text;
+      const spEl = document.getElementById('spname-' + p.key);
+      if (spEl && spEl.textContent !== text) spEl.textContent = text;
+    }
+  }
+  function delPageCat(key) {
+    const p = curPage();
+    if (!p) return;
+    if (p.cats.length <= 1) { showToast('You need at least one category.'); return; }
+    const label = p.cats.find(c => c.key === key).label;
+    showConfirmModal('Delete "' + label + '"? You can undo this with \u2318Z.', function () {
+      pushUndoSnapshot('delete "' + label + '"');
+      p.cats = p.cats.filter(c => c.key !== key);
+      if (p.activeCatKey === key) p.activeCatKey = p.cats[0].key;
+      savePages();
+      renderPageNav();
+      renderActivePage();
+      showToast('Deleted "' + label + '" \u2014 \u2318Z to undo');
+    });
+  }
+  function movePageCat(key, dir) {
+    const p = curPage();
+    if (!p) return;
+    const i = p.cats.findIndex(c => c.key === key);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= p.cats.length) return;
+    const tmp = p.cats[i]; p.cats[i] = p.cats[j]; p.cats[j] = tmp;
+    savePages();
+    renderPageNav();
+  }
+  function renderPageNav() {
+    const nav = document.getElementById('page-nav');
+    if (!nav) return;
+    const p = curPage();
+    if (!p) return;
+    ensurePageCats(p);
+    nav.innerHTML = p.cats.map((c, i) =>
+      '<div class="cat' + (c.key === p.activeCatKey ? ' on' : '') + '" onclick="setPageActive(\'' + c.key + '\')">' +
+        '<span class="cat-move' + (i === 0 ? ' cat-move-disabled' : '') + '" onclick="event.stopPropagation(); movePageCat(\'' + c.key + '\', -1)" title="Shift left">\u2039</span>' +
+        '<span class="cat-name" id="pagecatname-' + c.key + '" contenteditable spellcheck="false" onclick="event.stopPropagation()" onkeydown="return blurOnEnter(event)" oninput="renamePageCat(\'' + c.key + '\', this.textContent)">' + esc(c.label) + '</span>' +
+        '<span class="cat-n">' + (c.type === 'doc' ? '' : c.rows.length) + '</span>' +
+        '<span class="cat-move' + (i === p.cats.length - 1 ? ' cat-move-disabled' : '') + '" onclick="event.stopPropagation(); movePageCat(\'' + c.key + '\', 1)" title="Shift right">\u203a</span>' +
+        '<button class="cat-del" onclick="event.stopPropagation(); delPageCat(\'' + c.key + '\')" title="Delete">\u00d7</button>' +
+        '</div>').join('') +
+      '<div class="cat-add" id="page-cat-add" onclick="addPageCat()">+ New category</div>' +
+      '<div class="cat-add" onclick="goHome()">\u2190 Home</div>';
+  }
+  function pageShellHTML() {
+    return '<div class="shell"><nav id="page-nav"></nav><main>' +
+      '<div id="pt-sheet-body" style="padding:28px 32px 80px;">' +
+      '<div class="page-title" id="pt-title" contenteditable spellcheck="false" onkeydown="return blurOnEnter(event)" oninput="renamePageCat(curPage().activeCatKey, this.textContent)"></div><div class="page-sub" id="pt-sub"></div>' +
       '<div id="pt-filter-bar-slot"></div>' +
       '<div class="table-wrap"><table id="pt-tbl"><thead id="pt-thead"></thead><tbody id="pt-tbody"></tbody></table></div>' +
       '<div class="add-row" onclick="ptAddRow()">+ New</div>' +
+      '</div>' +
+      '<div id="pt-doc-body" class="doc"><div id="doc-body"></div></div>' +
       '</main></div>';
   }
-  function curPage() { return pages.find(p => p.key === view); }
+  function renderActivePage() {
+    renderPageNav();
+    const c = curCat();
+    const sheetBody = document.getElementById('pt-sheet-body');
+    const docBody = document.getElementById('pt-doc-body');
+    if (!c || !sheetBody || !docBody) return;
+    if (c.type === 'doc') {
+      sheetBody.style.display = 'none';
+      docBody.style.display = '';
+      renderDoc();
+    } else {
+      sheetBody.style.display = '';
+      docBody.style.display = 'none';
+      renderPageTable();
+    }
+  }
   function renderPageTable() {
-    const p = curPage();
-    ensureColTypes(p);
-    const visible = p.rows.map((row, ri) => ({ row, ri })).filter(x => passesFilter(p, x.row));
-    document.getElementById('pt-title').textContent = p.label;
+    const c = curCat();
+    ensureColTypes(c);
+    const visible = c.rows.map((row, ri) => ({ row, ri })).filter(x => passesFilter(c, x.row));
+    document.getElementById('pt-title').textContent = c.label;
     document.getElementById('pt-sub').textContent = visible.length + (visible.length === 1 ? ' row' : ' rows') +
-      (visible.length !== p.rows.length ? ' of ' + p.rows.length : '') + ' \u00b7 click any cell to edit';
+      (visible.length !== c.rows.length ? ' of ' + c.rows.length : '') + ' \u00b7 click any cell to edit';
     document.getElementById('pt-thead').innerHTML = '<tr>' +
-      tableHeaderHTML(p, 'ptRenameCol', 'ptCycleColType') +
+      tableHeaderHTML(c, 'ptRenameCol', 'ptCycleColType') +
       '<th class="col-addbtn" onclick="ptAddCol()" title="Add column">+</th>' +
       '<th class="row-del-cell"></th></tr>';
     document.getElementById('pt-tbody').innerHTML = visible.map(({ row, ri }) =>
-      '<tr>' + row.map((cell, ci) => tableCellHTML(cell, p.colTypes[ci], ri, ci, 'ptSetCell', 'ptCellAddTag', 'ptCellRemoveTag')).join('') +
+      '<tr>' + row.map((cell, ci) => tableCellHTML(cell, c.colTypes[ci], ri, ci, 'ptSetCell', 'ptCellAddTag', 'ptCellRemoveTag')).join('') +
       '<td class="col-addbtn"></td>' +
       '<td class="row-del-cell"><button class="row-del" onclick="ptDelRow(' + ri + ')" title="Remove row">\u00d7</button></td>' +
       '</tr>'
     ).join('');
     const bar = document.getElementById('pt-filter-bar-slot');
-    if (bar) bar.innerHTML = filterBarHTML(p);
+    if (bar) bar.innerHTML = filterBarHTML(c);
   }
-  function ptSetCell(r, ci, v) { curPage().rows[r][ci] = v; savePages(); }
-  function ptRenameCol(ci, el) { curPage().cols[ci] = el.textContent; savePages(); }
+  function ptSetCell(r, ci, v) { curCat().rows[r][ci] = v; savePages(); }
+  function ptRenameCol(ci, el) { curCat().cols[ci] = el.textContent; savePages(); }
   function ptCycleColType(ci) {
-    const p = curPage();
-    ensureColTypes(p);
-    p.colTypes[ci] = nextColType(p.colTypes[ci]);
+    const c = curCat();
+    ensureColTypes(c);
+    c.colTypes[ci] = nextColType(c.colTypes[ci]);
     savePages(); renderPageTable();
   }
   function ptCellAddTag(ri, ci) {
-    const p = curPage();
+    const c = curCat();
     const val = prompt('Add tag');
     if (!val || !val.trim()) return;
-    const tags = splitTags(p.rows[ri][ci]);
+    const tags = splitTags(c.rows[ri][ci]);
     tags.push(val.trim());
-    p.rows[ri][ci] = joinTags(tags);
+    c.rows[ri][ci] = joinTags(tags);
     savePages(); renderPageTable();
   }
   function ptCellRemoveTag(ri, ci, ti) {
-    const p = curPage();
-    const tags = splitTags(p.rows[ri][ci]);
+    const c = curCat();
+    const tags = splitTags(c.rows[ri][ci]);
     tags.splice(ti, 1);
-    p.rows[ri][ci] = joinTags(tags);
+    c.rows[ri][ci] = joinTags(tags);
     savePages(); renderPageTable();
   }
-  function ptAddRow() { const p = curPage(); p.rows.push(p.cols.map(() => '')); savePages(); renderPageTable(); }
+  function ptAddRow() { const c = curCat(); c.rows.push(c.cols.map(() => '')); savePages(); renderPageTable(); }
   function ptAddCol() {
     const name = prompt('Column name', 'New');
     if (name === null) return;
-    const p = curPage();
-    ensureColTypes(p);
-    p.cols.push(name || 'New');
-    p.colTypes.push('text');
-    p.rows.forEach(r => r.push(''));
+    const c = curCat();
+    ensureColTypes(c);
+    c.cols.push(name || 'New');
+    c.colTypes.push('text');
+    c.rows.forEach(r => r.push(''));
     savePages(); renderPageTable();
   }
   function ptDelRow(ri) {
-    const p = curPage();
-    p.rows.splice(ri, 1);
-    if (!p.rows.length) p.rows.push(p.cols.map(() => ''));
+    const c = curCat();
+    c.rows.splice(ri, 1);
+    if (!c.rows.length) c.rows.push(c.cols.map(() => ''));
     savePages(); renderPageTable();
   }
 
   /* =====================================================================
      DOC PAGES: rich content (headings, tables, nested bullet lists) for
      pages like the rate sheet that aren't just a flat table. Grows the
-     same way — "+ Add section" / "+ add item" at every level.
+     same way — "+ Add section" / "+ add item" at every level. Lives inside
+     whichever category is currently active on the page (see curCat()).
      ===================================================================== */
-  function docShellHTML() {
-    if (!pageHasNavContext(view)) return '<main class="doc"><div id="doc-body"></div></main>';
-    return '<div class="shell"><nav id="page-nav">' + pagesNavHTML() + '</nav><main class="doc"><div id="doc-body"></div></main></div>';
-  }
   function itemRef(items, path) {
     let arr = items;
     for (let i = 0; i < path.length - 1; i++) arr = arr[path[i]].sub;
@@ -2618,39 +2745,39 @@
       return '';
     }).join('') + '<div class="doc-addblock" onclick="docAddBlock()">+ Add section</div>';
   }
-  function renderDoc() { document.getElementById('doc-body').innerHTML = docHTML(curPage().blocks); }
-  function docSetBlock(bi, html) { curPage().blocks[bi].html = html; savePages(); }
-  // The first heading in a doc doubles as its title everywhere else in the
-  // app (home list, side panel, breadcrumb, nav) -- so typing over the
-  // "Untitled" placeholder heading renames the page itself instead of
+  function renderDoc() { document.getElementById('doc-body').innerHTML = docHTML(curCat().blocks); }
+  function docSetBlock(bi, html) { curCat().blocks[bi].html = html; savePages(); }
+  // The first heading in a doc doubles as that category's tab title (and the
+  // page's own label too, while it's still the page's only category) -- so
+  // typing over the "Untitled" placeholder heading renames it instead of
   // leaving a stale "Untitled" label behind that you'd have to fix by hand.
   function docSetHeading(bi, el) {
-    curPage().blocks[bi].html = el.innerHTML;
-    if (bi === 0) renamePage(view, el.textContent);
+    curCat().blocks[bi].html = el.innerHTML;
+    if (bi === 0) renamePageCat(curPage().activeCatKey, el.textContent);
     else savePages();
   }
   function docSetItem(bi, pathStr, html) {
-    const r = itemRef(curPage().blocks[bi].items, pathStr.split('.').map(Number));
+    const r = itemRef(curCat().blocks[bi].items, pathStr.split('.').map(Number));
     r.arr[r.idx].html = html; savePages();
   }
   function docDelItem(bi, pathStr) {
-    const r = itemRef(curPage().blocks[bi].items, pathStr.split('.').map(Number));
+    const r = itemRef(curCat().blocks[bi].items, pathStr.split('.').map(Number));
     r.arr.splice(r.idx, 1); savePages(); renderDoc();
   }
-  function docAddItem(bi) { curPage().blocks[bi].items.push({ html: 'New item' }); savePages(); renderDoc(); }
-  function docAddBlock() { curPage().blocks.push({ t: 'p', html: 'Type something\u2026' }); savePages(); renderDoc(); }
-  function docSetCell(bi, ri, ci, v) { curPage().blocks[bi].rows[ri][ci] = v; savePages(); }
-  function docRenameCol(bi, ci, v) { curPage().blocks[bi].cols[ci] = v; savePages(); }
-  function docAddRow(bi) { const b = curPage().blocks[bi]; b.rows.push(b.cols.map(() => '')); savePages(); renderDoc(); }
+  function docAddItem(bi) { curCat().blocks[bi].items.push({ html: 'New item' }); savePages(); renderDoc(); }
+  function docAddBlock() { curCat().blocks.push({ t: 'p', html: 'Type something\u2026' }); savePages(); renderDoc(); }
+  function docSetCell(bi, ri, ci, v) { curCat().blocks[bi].rows[ri][ci] = v; savePages(); }
+  function docRenameCol(bi, ci, v) { curCat().blocks[bi].cols[ci] = v; savePages(); }
+  function docAddRow(bi) { const b = curCat().blocks[bi]; b.rows.push(b.cols.map(() => '')); savePages(); renderDoc(); }
   function docDelRow(bi, ri) {
-    const b = curPage().blocks[bi];
+    const b = curCat().blocks[bi];
     b.rows.splice(ri, 1);
     if (!b.rows.length) b.rows.push(b.cols.map(() => ''));
     savePages(); renderDoc();
   }
-  function docToggleOpen(bi, isOpen) { curPage().blocks[bi].open = isOpen; savePages(); }
-  function docToggleSetItem(bi, ii, html) { curPage().blocks[bi].items[ii].html = html; savePages(); }
-  function docToggleAddItem(bi) { curPage().blocks[bi].items.push({ html: 'New line' }); savePages(); renderDoc(); }
+  function docToggleOpen(bi, isOpen) { curCat().blocks[bi].open = isOpen; savePages(); }
+  function docToggleSetItem(bi, ii, html) { curCat().blocks[bi].items[ii].html = html; savePages(); }
+  function docToggleAddItem(bi) { curCat().blocks[bi].items.push({ html: 'New line' }); savePages(); renderDoc(); }
 
   /* =====================================================================
      BLOCK PALETTE: the side-panel "Blocks" section is the slash-command
@@ -2660,21 +2787,24 @@
      into it, like starting from a blank slash command.
      ===================================================================== */
   function insertBlock(kind) {
-    const wasOnDoc = curPage() && curPage().type === 'doc';
-    let p = curPage();
+    const wasOnDoc = curPage() && curCat() && curCat().type === 'doc';
+    let blocks;
     if (!wasOnDoc) {
       const key = 'untitled-' + Date.now().toString(36).slice(-5);
-      p = { key: key, label: 'New page', type: 'doc', blocks: [] };
+      const p = { key: key, label: 'New page', type: 'doc', blocks: [] };
       pages.push(p);
       view = key;
       localStorage.setItem('hq_view', key);
+      blocks = p.blocks;
+    } else {
+      blocks = curCat().blocks;
     }
-    if (kind === 'h2') p.blocks.push({ t: 'h2', html: 'New heading' });
-    else if (kind === 'h3') p.blocks.push({ t: 'h3', html: 'New subheading' });
-    else if (kind === 'p') p.blocks.push({ t: 'p', html: 'Type something\u2026' });
-    else if (kind === 'ul') p.blocks.push({ t: 'ul', items: [{ html: 'New item' }] });
-    else if (kind === 'toggle') p.blocks.push({ t: 'toggle', html: 'Toggle', open: true, items: [{ html: 'New line' }] });
-    else if (kind === 'table') p.blocks.push({ t: 'table', cols: ['Col 1', 'Col 2'], rows: [['', '']] });
+    if (kind === 'h2') blocks.push({ t: 'h2', html: 'New heading' });
+    else if (kind === 'h3') blocks.push({ t: 'h3', html: 'New subheading' });
+    else if (kind === 'p') blocks.push({ t: 'p', html: 'Type something\u2026' });
+    else if (kind === 'ul') blocks.push({ t: 'ul', items: [{ html: 'New item' }] });
+    else if (kind === 'toggle') blocks.push({ t: 'toggle', html: 'Toggle', open: true, items: [{ html: 'New line' }] });
+    else if (kind === 'table') blocks.push({ t: 'table', cols: ['Col 1', 'Col 2'], rows: [['', '']] });
     savePages();
     if (!wasOnDoc) { render(); return; }
     renderDoc();
@@ -2699,10 +2829,10 @@
   /* ---------- page preview overlay: double-click a pinned home widget to
      open its source page almost-full-screen, without navigating away from
      the dashboard underneath. Reuses the exact same shell/render functions
-     as a real page view (docShellHTML/renderDoc, pageTableShellHTML/
-     renderPageTable) by temporarily pointing `view` at the source page and
-     rendering into the overlay's container instead of #app \u2014 all editing
-     (titles, cells, blocks) works exactly as it does on the full page. ---------- */
+     as a real page view (pageShellHTML/renderActivePage) by temporarily
+     pointing `view` at the source page and rendering into the overlay's
+     container instead of #app \u2014 all editing (titles, cells, blocks)
+     works exactly as it does on the full page. ---------- */
   let previewPrevView = null;
   function openPagePreview(key) {
     const p = pages.find(x => x.key === key);
@@ -2710,13 +2840,8 @@
     previewPrevView = view;
     view = key;
     const body = document.getElementById('page-preview-body');
-    if (p.type === 'doc') {
-      body.innerHTML = docShellHTML();
-      renderDoc();
-    } else {
-      body.innerHTML = pageTableShellHTML();
-      renderPageTable();
-    }
+    body.innerHTML = pageShellHTML();
+    renderActivePage();
     document.getElementById('page-preview-backdrop').classList.add('show');
   }
   function closePagePreview() {
@@ -2740,12 +2865,9 @@
     } else if (view === 'job-sheet') {
       app.innerHTML = jobSheetShellHTML();
       renderNav(); renderTable();
-    } else if (curPage() && curPage().type === 'doc') {
-      app.innerHTML = docShellHTML();
-      renderDoc();
     } else if (curPage()) {
-      app.innerHTML = pageTableShellHTML();
-      renderPageTable();
+      app.innerHTML = pageShellHTML();
+      renderActivePage();
     } else {
       view = 'home'; localStorage.setItem('hq_view', 'home');
       app.innerHTML = homeHTML();
@@ -2971,46 +3093,49 @@
     render();
   }
   function pinnedVisualHTML(p) {
-    if (p.type === 'table' && p.rows && p.rows.length) {
-      ensureColTypes(p);
-      const ci = p.colTypes.indexOf('checkbox');
+    const c = catFor(p);
+    if (c && c.type === 'table' && c.rows && c.rows.length) {
+      ensureColTypes(c);
+      const ci = c.colTypes.indexOf('checkbox');
       if (ci < 0) return '<div class="widget-empty">Add a checkbox column on this page to show progress.</div>';
-      const done = p.rows.filter(r => /^(true|yes|1|x|done)$/i.test((r[ci] || '').trim())).length;
-      const pct = Math.round(done / p.rows.length * 100);
+      const done = c.rows.filter(r => /^(true|yes|1|x|done)$/i.test((r[ci] || '').trim())).length;
+      const pct = Math.round(done / c.rows.length * 100);
       return '<div class="st-row"><span class="st-label">Complete</span>' +
         '<span class="st-bar-wrap"><span class="st-bar" style="width:' + pct + '%"></span></span>' +
-        '<span class="st-count">' + done + '/' + p.rows.length + '</span></div>';
+        '<span class="st-count">' + done + '/' + c.rows.length + '</span></div>';
     }
     return '<div class="widget-empty">Visual needs a table page with a checkbox column.</div>';
   }
   function pinnedTimelineHTML(p) {
-    if (p.type === 'table' && p.rows && p.rows.length) {
-      const dateCol = p.cols.findIndex(c => /date/i.test(c));
+    const c = catFor(p);
+    if (c && c.type === 'table' && c.rows && c.rows.length) {
+      const dateCol = c.cols.findIndex(col => /date/i.test(col));
       if (dateCol < 0) return '<div class="widget-empty">Add a date column on this page to show a timeline.</div>';
-      const labelCol = dateCol === 0 && p.cols.length > 1 ? 1 : 0;
-      const items = p.rows.map(r => ({ date: parseLooseDate(r[dateCol]), label: r[labelCol] }))
+      const labelCol = dateCol === 0 && c.cols.length > 1 ? 1 : 0;
+      const items = c.rows.map(r => ({ date: parseLooseDate(r[dateCol]), label: r[labelCol] }))
         .filter(x => x.date).sort((a, b) => a.date - b.date).slice(0, 8);
       if (!items.length) return '<div class="widget-empty">Nothing dated yet.</div>';
       return items.map(it => '<div class="tl-item"><span class="tl-date">' + fmtShort(it.date) + '</span>' +
         '<span class="tl-label">' + esc(it.label || '') + '</span><span class="tl-cat">' + esc(p.label) + '</span></div>').join('');
     }
-    if (p.type === 'doc' && p.blocks && p.blocks.length) {
-      const heads = p.blocks.filter(b => b.t === 'h2' || b.t === 'h3').slice(0, 8);
+    if (c && c.type === 'doc' && c.blocks && c.blocks.length) {
+      const heads = c.blocks.filter(b => b.t === 'h2' || b.t === 'h3').slice(0, 8);
       if (!heads.length) return '<div class="widget-empty">Add some headings on this page to show a timeline.</div>';
       return heads.map(b => '<div class="tl-item"><span class="tl-label">' + esc((b.html || '').replace(/<[^>]+>/g, '')) + '</span><span class="tl-cat">' + esc(p.label) + '</span></div>').join('');
     }
     return '<div class="widget-empty">No timeline available.</div>';
   }
   function pinnedSheetHTML(p) {
-    if (p.type === 'table' && p.rows && p.rows.length) {
-      const cols = p.cols.slice(0, 3);
+    const c = catFor(p);
+    if (c && c.type === 'table' && c.rows && c.rows.length) {
+      const cols = c.cols.slice(0, 3);
       return '<div class="pin-sheet">' +
-        '<div class="pin-sheet-row pin-sheet-head">' + cols.map(c => '<span>' + esc(c) + '</span>').join('') + '</div>' +
-        p.rows.slice(0, 6).map(r => '<div class="pin-sheet-row">' + cols.map((c, i) => '<span>' + esc(r[i] || '') + '</span>').join('') + '</div>').join('') +
+        '<div class="pin-sheet-row pin-sheet-head">' + cols.map(col => '<span>' + esc(col) + '</span>').join('') + '</div>' +
+        c.rows.slice(0, 6).map(r => '<div class="pin-sheet-row">' + cols.map((col, i) => '<span>' + esc(r[i] || '') + '</span>').join('') + '</div>').join('') +
         '</div>';
     }
-    if (p.type === 'doc' && p.blocks && p.blocks.length) {
-      return '<div class="pin-doc-preview">' + p.blocks.slice(0, 3).map(b => '<div>' + esc((b.html || '').replace(/<[^>]+>/g, '')).slice(0, 90) + '</div>').join('') + '</div>';
+    if (c && c.type === 'doc' && c.blocks && c.blocks.length) {
+      return '<div class="pin-doc-preview">' + c.blocks.slice(0, 3).map(b => '<div>' + esc((b.html || '').replace(/<[^>]+>/g, '')).slice(0, 90) + '</div>').join('') + '</div>';
     }
     return '<div class="widget-empty">No preview available.</div>';
   }
