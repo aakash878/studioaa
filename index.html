@@ -547,6 +547,38 @@
     flex-direction: column; gap: 1px;
   }
   .addblock-menu.show { display: flex; }
+  /* ---------- Notion-style block gutter: hover a block to reveal a handle;
+     click it to select that block, or press down and drag across several
+     handles to select a whole range (like Notion's own block multi-select),
+     then delete them all at once from the floating bar below instead of
+     clicking each one's own tiny delete control individually. ---------- */
+  .doc-block { position: relative; padding-left: 22px; margin: 0; border-radius: 6px; transition: background .1s ease; }
+  .doc-block-handle {
+    position: absolute; left: 0; top: 3px; width: 18px; height: 20px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--gray-2); font-size: 13px; line-height: 1; cursor: pointer; opacity: 0;
+    border-radius: 4px; user-select: none; transition: opacity .1s ease;
+  }
+  .doc-block:hover .doc-block-handle { opacity: 1; }
+  .doc-block-handle:hover { background: var(--line-soft); }
+  .doc-block.block-selected { background: rgba(115,100,230,.14); }
+  .doc-block.block-selected .doc-block-handle { opacity: 1; color: var(--accent); }
+  .doc-select-bar {
+    display: none; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 6;
+    background: var(--surface, var(--bg)); border: 1px solid var(--line); border-radius: 8px;
+    padding: 7px 12px; margin: 0 0 12px; font-size: 11.5px; color: var(--gray-1);
+    box-shadow: 0 4px 14px rgba(0,0,0,.08);
+  }
+  .doc-select-bar.show { display: flex; }
+  .doc-select-count { font-weight: 700; color: var(--ink); }
+  .doc-select-spacer { flex: 1; }
+  .doc-select-bar button {
+    border: 1px solid var(--line); background: var(--bg); border-radius: 6px;
+    padding: 3px 11px; font-size: 11px; cursor: pointer; color: var(--ink);
+  }
+  .doc-select-bar button:hover { background: var(--line-soft); }
+  .doc-select-bar button.danger { color: #d14343; border-color: rgba(209,67,67,.35); }
+  .doc-select-bar button.danger:hover { background: rgba(209,67,67,.08); }
   .doc-table { margin: 4px 0 6px; }
   .doc-toggle { margin: 4px 0 6px; }
   .doc-toggle-summary {
@@ -2831,16 +2863,33 @@
   function clearBlockPlaceholder(el) {
     if (BLOCK_PLACEHOLDERS.indexOf(el.textContent) !== -1) el.textContent = '';
   }
+  // Every block \u2014 heading, paragraph, list, table, toggle, divider \u2014 renders
+  // wrapped in the same .doc-block gutter shell so they all get the exact
+  // same handle-drag-to-select / drag-to-reorder / bulk-delete behavior,
+  // instead of each block type needing its own bespoke selection logic.
+  function docBlockWrap(bi, inner) {
+    return '<div class="doc-block" data-block="' + bi + '">' +
+      '<span class="doc-block-handle" onmousedown="blockHandleMouseDown(event, ' + bi + ')" title="Click to select \u2022 drag down to select several, then delete them all at once">\u2261</span>' +
+      inner +
+      '</div>';
+  }
   function docHTML(blocks) {
-    return blocks.map((b, bi) => {
-      if (b.t === 'h2') return '<div class="doc-h2" data-bi="' + bi + '" contenteditable onfocus="clearBlockPlaceholder(this)" oninput="docSetHeading(' + bi + ', this)">' + b.html + '</div>';
-      if (b.t === 'h3') return '<div class="doc-h3" data-bi="' + bi + '" contenteditable onfocus="clearBlockPlaceholder(this)" oninput="docSetBlock(' + bi + ', this.innerHTML)">' + b.html + '</div>';
-      if (b.t === 'p') return '<div class="doc-p" data-bi="' + bi + '" contenteditable onfocus="clearBlockPlaceholder(this)" oninput="docSetBlock(' + bi + ', this.innerHTML)">' + b.html + '</div>';
-      if (b.t === 'hr') return '<hr class="doc-hr">';
-      if (b.t === 'table') return docTableHTML(b, bi);
-      if (b.t === 'toggle') return docToggleHTML(b, bi);
-      if (b.t === 'ul') return '<ul class="doc-ul">' + docListHTML(b.items, bi) + '</ul>' +
-        '<div class="doc-additem" onclick="docAddItem(' + bi + ')">+ add item</div>';
+    return '<div class="doc-select-bar" id="doc-select-bar">' +
+        '<span class="doc-select-count" id="doc-select-count">0 selected</span>' +
+        '<span class="doc-select-spacer"></span>' +
+        '<button onclick="selectAllBlocks()">Select all</button>' +
+        '<button class="danger" onclick="deleteSelectedBlocks()">Delete</button>' +
+        '<button onclick="clearBlockSelection()">Cancel</button>' +
+      '</div>' +
+      blocks.map((b, bi) => {
+      if (b.t === 'h2') return docBlockWrap(bi, '<div class="doc-h2" data-bi="' + bi + '" contenteditable onfocus="clearBlockPlaceholder(this)" oninput="docSetHeading(' + bi + ', this)">' + b.html + '</div>');
+      if (b.t === 'h3') return docBlockWrap(bi, '<div class="doc-h3" data-bi="' + bi + '" contenteditable onfocus="clearBlockPlaceholder(this)" oninput="docSetBlock(' + bi + ', this.innerHTML)">' + b.html + '</div>');
+      if (b.t === 'p') return docBlockWrap(bi, '<div class="doc-p" data-bi="' + bi + '" contenteditable onfocus="clearBlockPlaceholder(this)" oninput="docSetBlock(' + bi + ', this.innerHTML)">' + b.html + '</div>');
+      if (b.t === 'hr') return docBlockWrap(bi, '<hr class="doc-hr">');
+      if (b.t === 'table') return docBlockWrap(bi, docTableHTML(b, bi));
+      if (b.t === 'toggle') return docBlockWrap(bi, docToggleHTML(b, bi));
+      if (b.t === 'ul') return docBlockWrap(bi, '<ul class="doc-ul">' + docListHTML(b.items, bi) + '</ul>' +
+        '<div class="doc-additem" onclick="docAddItem(' + bi + ')">+ add item</div>');
       return '';
     }).join('') +
       '<div class="addblock-wrap">' +
@@ -2868,6 +2917,98 @@
     const m = document.getElementById('addblock-menu');
     if (m && m.classList.contains('show') && !m.contains(e.target)) m.classList.remove('show');
   });
+
+  /* =====================================================================
+     BLOCK MULTI-SELECT: click a block's gutter handle to select it, or
+     press down on one handle and drag down/up across others to select a
+     whole range \u2014 exactly like Notion's own block selection. Selected
+     blocks get a highlight and a floating bar appears with Select all /
+     Delete / Cancel, so wiping out several sections at once doesn't
+     require deleting them one by one.
+     ===================================================================== */
+  let selectedBlocks = new Set();
+  let blockSelectAnchor = null;
+  let isBlockSelecting = false;
+  function blockHandleMouseDown(e, bi) {
+    e.preventDefault();
+    e.stopPropagation();
+    document.activeElement && document.activeElement.blur && document.activeElement.blur();
+    isBlockSelecting = true;
+    // Shift-click extends from wherever the selection first started, so
+    // dragging never overwrites the anchor mid-gesture \u2014 only a fresh
+    // (non-shift) click picks a new starting point.
+    if (e.shiftKey && blockSelectAnchor !== null) {
+      selectBlockRange(blockSelectAnchor, bi);
+    } else {
+      blockSelectAnchor = bi;
+      selectedBlocks = new Set([bi]);
+      renderBlockSelectionHighlight();
+    }
+  }
+  document.addEventListener('mousemove', function (e) {
+    if (!isBlockSelecting) return;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const blockEl = el && el.closest ? el.closest('.doc-block') : null;
+    if (!blockEl) return;
+    const bi = Number(blockEl.dataset.block);
+    selectBlockRange(blockSelectAnchor, bi);
+  });
+  document.addEventListener('mouseup', function () {
+    isBlockSelecting = false;
+  });
+  function selectBlockRange(a, b) {
+    const lo = Math.min(a, b), hi = Math.max(a, b);
+    selectedBlocks = new Set();
+    for (let i = lo; i <= hi; i++) selectedBlocks.add(i);
+    renderBlockSelectionHighlight();
+  }
+  function selectAllBlocks() {
+    const total = curCat().blocks.length;
+    selectedBlocks = new Set(Array.from({ length: total }, (_, i) => i));
+    renderBlockSelectionHighlight();
+  }
+  function clearBlockSelection() {
+    selectedBlocks = new Set();
+    renderBlockSelectionHighlight();
+  }
+  function renderBlockSelectionHighlight() {
+    document.querySelectorAll('#doc-body .doc-block').forEach(el => {
+      el.classList.toggle('block-selected', selectedBlocks.has(Number(el.dataset.block)));
+    });
+    const bar = document.getElementById('doc-select-bar');
+    const count = document.getElementById('doc-select-count');
+    if (bar) bar.classList.toggle('show', selectedBlocks.size > 0);
+    if (count) count.textContent = selectedBlocks.size + (selectedBlocks.size === 1 ? ' block selected' : ' blocks selected');
+  }
+  function deleteSelectedBlocks() {
+    if (!selectedBlocks.size) return;
+    const n = selectedBlocks.size;
+    showConfirmModal('Delete ' + n + ' selected block' + (n === 1 ? '' : 's') + '? You can undo this with \u2318Z.', function () {
+      pushUndoSnapshot('delete ' + n + ' block' + (n === 1 ? '' : 's'));
+      const c = curCat();
+      c.blocks = c.blocks.filter((_, i) => !selectedBlocks.has(i));
+      if (!c.blocks.length) c.blocks.push({ t: 'p', html: 'Type something\u2026' });
+      selectedBlocks = new Set();
+      savePages();
+      renderDoc();
+    });
+  }
+  // Delete/Backspace deletes the selection whenever it's active and focus
+  // isn't inside an actively-edited text field (so normal typing is never
+  // hijacked \u2014 only applies once you've clicked into the gutter).
+  document.addEventListener('keydown', function (e) {
+    if (!selectedBlocks.size) return;
+    if (e.key !== 'Backspace' && e.key !== 'Delete') return;
+    const el = document.activeElement;
+    const isEditingText = el && (el.isContentEditable || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA');
+    if (isEditingText) return;
+    e.preventDefault();
+    deleteSelectedBlocks();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && selectedBlocks.size) clearBlockSelection();
+  });
+
   function focusBlock(bi) {
     const el = document.querySelector('#doc-body [data-bi="' + bi + '"]');
     if (!el) return;
@@ -2881,7 +3022,10 @@
     sel.removeAllRanges();
     sel.addRange(range);
   }
-  function renderDoc() { document.getElementById('doc-body').innerHTML = docHTML(curCat().blocks); }
+  function renderDoc() {
+    selectedBlocks = new Set();
+    document.getElementById('doc-body').innerHTML = docHTML(curCat().blocks);
+  }
   function docSetBlock(bi, html) { curCat().blocks[bi].html = html; savePages(); }
   // The first heading in a doc doubles as that category's tab title (and the
   // page's own label too, while it's still the page's only category) -- so
