@@ -454,10 +454,34 @@
   .page-sub { font-size: 11.5px; color: var(--gray-2); margin-bottom: 20px; }
 
   /* ---------- the table, shared by job-sheet categories and standalone pages ---------- */
+  .table-wrap-outer { position: relative; }
   .table-wrap {
     border: 1px solid var(--line); border-radius: 9px; overflow: auto; background: var(--surface-glass);
     backdrop-filter: blur(16px) saturate(160%); -webkit-backdrop-filter: blur(16px) saturate(160%);
     max-width: 100%;
+  }
+  /* Reorder-mode peek toggles \u2014 same "small tab tucked against the edge"
+     language as the right-edge side panel handle (.sp-handle): tucked out of
+     the way by default, one click switches the whole table into a
+     drag-to-reorder mode instead of overloading every ordinary click. */
+  .tbl-reorder-handle {
+    position: absolute; z-index: 5; display: flex; align-items: center; justify-content: center;
+    background: var(--surface-glass); border: 1px solid var(--line); color: var(--gray-2);
+    cursor: pointer; font-size: 12px; padding: 0;
+    backdrop-filter: blur(16px) saturate(160%); -webkit-backdrop-filter: blur(16px) saturate(160%);
+    transition: color .15s, background .15s, border-color .15s;
+  }
+  .tbl-reorder-handle:hover { color: var(--ink); background: var(--hover); }
+  .tbl-reorder-handle.on { color: var(--ink); background: var(--hover); border-color: var(--gray-2); }
+  .tbl-reorder-cols { top: -11px; left: 50%; transform: translateX(-50%); width: 46px; height: 20px; border-radius: 10px; }
+  .tbl-reorder-rows { top: 50%; left: -11px; transform: translateY(-50%); width: 20px; height: 46px; border-radius: 10px; }
+  .th-grip, .row-grip-cell {
+    cursor: grab; color: var(--gray-2); font-size: 10px; letter-spacing: -2px;
+    flex-shrink: 0; user-select: none;
+  }
+  .row-grip-cell { text-align: center; width: 22px; }
+  th.drop-target, td.row-grip-cell.drop-target {
+    box-shadow: inset 0 0 0 1.5px rgba(196,201,209,.9); background: rgba(196,201,209,.14);
   }
   table { border-collapse: collapse; width: max-content; min-width: 100%; }
   th, td {
@@ -1676,7 +1700,7 @@
 
   let view = localStorage.getItem('hq_view') || 'home';
   function goHome() { view = 'home'; localStorage.setItem('hq_view', 'home'); render(); }
-  function openPage(key) { view = key; localStorage.setItem('hq_view', key); render(); }
+  function openPage(key) { view = key; localStorage.setItem('hq_view', key); reorderColsMode = false; reorderRowsMode = false; render(); }
 
   function addPage() {
     showTextPrompt('What\u2019s the new page called?', '', function (label) {
@@ -1771,6 +1795,8 @@
     previewPrevView = view;
     view = 'job-sheet';
     activeKey = catKey;
+    reorderColsMode = false;
+    reorderRowsMode = false;
     localStorage.setItem('hq_active_cat', catKey);
     const body = document.getElementById('page-preview-body');
     body.innerHTML = jobSheetShellHTML();
@@ -2420,7 +2446,7 @@
   let cats = SEED_CATS;
   let activeKey = localStorage.getItem('hq_active_cat') || cats[0].key;
   function saveCats() { saveWorkspaceData(); touchActivity(); }
-  function setActive(key) { activeKey = key; localStorage.setItem('hq_active_cat', key); renderNav(); renderTable(); }
+  function setActive(key) { activeKey = key; localStorage.setItem('hq_active_cat', key); reorderColsMode = false; reorderRowsMode = false; renderNav(); renderTable(); }
   function activeCat() { return cats.find(c => c.key === activeKey) || cats[0]; }
 
   /* ---------- one-off client demo: visit ?demo=lola to load the redacted
@@ -2448,7 +2474,11 @@
       '<div class="page-title" id="page-title" contenteditable spellcheck="false" onkeydown="return blurOnEnter(event)" oninput="renameCat(activeKey, this.textContent)"></div><div class="page-sub" id="page-sub"></div>' +
       '<div id="sheet-body">' +
       '<div id="filter-bar-slot"></div>' +
+      '<div class="table-wrap-outer">' +
+      '<button class="tbl-reorder-handle tbl-reorder-cols" id="reorder-cols-btn" onclick="toggleReorderCols()" title="Drag to reorder columns">\u2194</button>' +
+      '<button class="tbl-reorder-handle tbl-reorder-rows" id="reorder-rows-btn" onclick="toggleReorderRows()" title="Drag to reorder rows">\u2195</button>' +
       '<div class="table-wrap"><table id="tbl"><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>' +
+      '</div>' +
       '<div class="add-row" onclick="addRow()">+ New</div>' +
       '</div>' +
       '<div id="notes-body" class="cat-notes" contenteditable spellcheck="false" oninput="saveCatNotes(activeKey, this.innerHTML)"></div>' +
@@ -2578,12 +2608,90 @@
   function nextColType(type) { return type === 'text' ? 'checkbox' : type === 'checkbox' ? 'select' : type === 'select' ? 'file' : 'text'; }
   function splitTags(v) { return (v || '').split(',').map(s => s.trim()).filter(Boolean); }
   function joinTags(arr) { return arr.join(', '); }
+  /* =====================================================================
+     SHEET REORDER MODE: the two peek toggles on the table (see
+     .tbl-reorder-cols / .tbl-reorder-rows, added to jobSheetShellHTML /
+     pageShellHTML) switch the whole table into drag-to-reorder \u2014 columns
+     via a grip in the header cell, rows via a grip cell on the left \u2014
+     instead of every table always being draggable and getting in the way
+     of ordinary clicking/typing into cells.
+     ===================================================================== */
+  let reorderColsMode = false;
+  let reorderRowsMode = false;
+  function curTableCat() { return view === 'job-sheet' ? activeCat() : curCat(); }
+  function saveTableCat() { if (view === 'job-sheet') saveCats(); else savePages(); }
+  function toggleReorderCols() { reorderColsMode = !reorderColsMode; rerenderTableView(); }
+  function toggleReorderRows() { reorderRowsMode = !reorderRowsMode; rerenderTableView(); }
+  let dragColIdx = null;
+  function colDragStart(e, ci) {
+    dragColIdx = ci;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(ci));
+  }
+  function colDragOver(e, ci) {
+    if (dragColIdx === null || dragColIdx === ci) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    e.currentTarget.classList.add('drop-target');
+  }
+  function colDragLeave(e) { e.currentTarget.classList.remove('drop-target'); }
+  function colDrop(e, ci) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drop-target');
+    if (dragColIdx === null || dragColIdx === ci) return;
+    const c = curTableCat();
+    ensureColTypes(c);
+    const from = dragColIdx;
+    const moveArr = (arr) => { const [x] = arr.splice(from, 1); arr.splice(ci, 0, x); };
+    moveArr(c.cols);
+    moveArr(c.colTypes);
+    c.rows.forEach(row => moveArr(row));
+    saveTableCat();
+    rerenderTableView();
+  }
+  function colDragEnd() {
+    dragColIdx = null;
+    document.querySelectorAll('th.drop-target').forEach(el => el.classList.remove('drop-target'));
+  }
+  let dragRowIdx = null;
+  function rowDragStart(e, ri) {
+    dragRowIdx = ri;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(ri));
+  }
+  function rowDragOver(e, ri) {
+    if (dragRowIdx === null || dragRowIdx === ri) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    e.currentTarget.classList.add('drop-target');
+  }
+  function rowDragLeave(e) { e.currentTarget.classList.remove('drop-target'); }
+  function rowDrop(e, ri) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drop-target');
+    if (dragRowIdx === null || dragRowIdx === ri) return;
+    const c = curTableCat();
+    const [row] = c.rows.splice(dragRowIdx, 1);
+    c.rows.splice(ri, 0, row);
+    saveTableCat();
+    rerenderTableView();
+  }
+  function rowDragEnd() {
+    dragRowIdx = null;
+    document.querySelectorAll('td.drop-target').forEach(el => el.classList.remove('drop-target'));
+  }
   function tableHeaderHTML(t, renameFn, cycleFn) {
     ensureColTypes(t);
     return t.cols.map((col, ci) =>
-      '<th><div class="th-row"><span class="th-name" contenteditable oninput="' + renameFn + '(' + ci + ', this)">' + esc(col) + '</span>' +
+      '<th' + (reorderColsMode ? ' ondragover="colDragOver(event,' + ci + ')" ondragleave="colDragLeave(event)" ondrop="colDrop(event,' + ci + ')"' : '') + '><div class="th-row">' +
+      (reorderColsMode ? '<span class="th-grip" draggable="true" ondragstart="colDragStart(event,' + ci + ')" ondragend="colDragEnd()" title="Drag to reorder">\u22ee\u22ee</span>' : '') +
+      '<span class="th-name" contenteditable oninput="' + renameFn + '(' + ci + ', this)">' + esc(col) + '</span>' +
       '<button class="th-type" onclick="' + cycleFn + '(' + ci + ')" title="Column type: text / checkbox / multi-select / file">' + typeGlyph(t.colTypes[ci]) + '</button></div></th>'
     ).join('');
+  }
+  function rowGripHTML(ri) {
+    if (!reorderRowsMode) return '';
+    return '<td class="row-grip-cell" draggable="true" ondragstart="rowDragStart(event,' + ri + ')" ondragend="rowDragEnd()" ondragover="rowDragOver(event,' + ri + ')" ondragleave="rowDragLeave(event)" ondrop="rowDrop(event,' + ri + ')" title="Drag to reorder">\u22ee\u22ee</td>';
   }
   function tableCellHTML(value, type, ri, ci, setFn, addTagFn, delTagFn) {
     if (type === 'checkbox') {
@@ -2719,17 +2827,22 @@
     document.getElementById('page-sub').textContent = visible.length + (visible.length === 1 ? ' row' : ' rows') +
       (visible.length !== c.rows.length ? ' of ' + c.rows.length : '') + ' \u00b7 click any cell to edit';
     document.getElementById('thead').innerHTML = '<tr>' +
+      (reorderRowsMode ? '<th class="row-grip-cell"></th>' : '') +
       tableHeaderHTML(c, 'renameCol', 'cycleColType') +
       '<th class="col-addbtn" onclick="addCol()" title="Add column">+</th>' +
       '<th class="row-del-cell"></th></tr>';
     document.getElementById('tbody').innerHTML = visible.map(({ row, ri }) =>
-      '<tr>' + row.map((cell, ci) => tableCellHTML(cell, c.colTypes[ci], ri, ci, 'setCell', 'cellAddTag', 'cellRemoveTag')).join('') +
+      '<tr>' + rowGripHTML(ri) + row.map((cell, ci) => tableCellHTML(cell, c.colTypes[ci], ri, ci, 'setCell', 'cellAddTag', 'cellRemoveTag')).join('') +
       '<td class="col-addbtn"></td>' +
       '<td class="row-del-cell"><button class="row-del" onclick="delRow(' + ri + ')" title="Remove row">\u00d7</button></td>' +
       '</tr>'
     ).join('');
     const bar = document.getElementById('filter-bar-slot');
     if (bar) bar.innerHTML = filterBarHTML(c);
+    const colsBtn = document.getElementById('reorder-cols-btn');
+    if (colsBtn) colsBtn.classList.toggle('on', reorderColsMode);
+    const rowsBtn = document.getElementById('reorder-rows-btn');
+    if (rowsBtn) rowsBtn.classList.toggle('on', reorderRowsMode);
   }
   function setCell(r, ci, v) { activeCat().rows[r][ci] = v; saveCats(); }
   function renameCol(ci, el) { activeCat().cols[ci] = el.textContent; saveCats(); }
@@ -2814,6 +2927,8 @@
     const p = curPage();
     if (!p) return;
     p.activeCatKey = key;
+    reorderColsMode = false;
+    reorderRowsMode = false;
     savePages();
     renderPageNav();
     renderActivePage();
@@ -2874,7 +2989,11 @@
       '<div id="pt-sheet-body" style="padding:28px 32px 80px;">' +
       '<div class="page-title" id="pt-title" contenteditable spellcheck="false" onkeydown="return blurOnEnter(event)" oninput="renamePageCat(curPage().activeCatKey, this.textContent)" onblur="pageCatNameBlur(this, curPage().activeCatKey)"></div><div class="page-sub" id="pt-sub"></div>' +
       '<div id="pt-filter-bar-slot"></div>' +
+      '<div class="table-wrap-outer">' +
+      '<button class="tbl-reorder-handle tbl-reorder-cols" id="pt-reorder-cols-btn" onclick="toggleReorderCols()" title="Drag to reorder columns">\u2194</button>' +
+      '<button class="tbl-reorder-handle tbl-reorder-rows" id="pt-reorder-rows-btn" onclick="toggleReorderRows()" title="Drag to reorder rows">\u2195</button>' +
       '<div class="table-wrap"><table id="pt-tbl"><thead id="pt-thead"></thead><tbody id="pt-tbody"></tbody></table></div>' +
+      '</div>' +
       '<div class="add-row" onclick="ptAddRow()">+ New</div>' +
       '</div>' +
       '<div id="pt-doc-body" class="doc"><div id="doc-body"></div></div>' +
@@ -2904,17 +3023,22 @@
     document.getElementById('pt-sub').textContent = visible.length + (visible.length === 1 ? ' row' : ' rows') +
       (visible.length !== c.rows.length ? ' of ' + c.rows.length : '') + ' \u00b7 click any cell to edit';
     document.getElementById('pt-thead').innerHTML = '<tr>' +
+      (reorderRowsMode ? '<th class="row-grip-cell"></th>' : '') +
       tableHeaderHTML(c, 'ptRenameCol', 'ptCycleColType') +
       '<th class="col-addbtn" onclick="ptAddCol()" title="Add column">+</th>' +
       '<th class="row-del-cell"></th></tr>';
     document.getElementById('pt-tbody').innerHTML = visible.map(({ row, ri }) =>
-      '<tr>' + row.map((cell, ci) => tableCellHTML(cell, c.colTypes[ci], ri, ci, 'ptSetCell', 'ptCellAddTag', 'ptCellRemoveTag')).join('') +
+      '<tr>' + rowGripHTML(ri) + row.map((cell, ci) => tableCellHTML(cell, c.colTypes[ci], ri, ci, 'ptSetCell', 'ptCellAddTag', 'ptCellRemoveTag')).join('') +
       '<td class="col-addbtn"></td>' +
       '<td class="row-del-cell"><button class="row-del" onclick="ptDelRow(' + ri + ')" title="Remove row">\u00d7</button></td>' +
       '</tr>'
     ).join('');
     const bar = document.getElementById('pt-filter-bar-slot');
     if (bar) bar.innerHTML = filterBarHTML(c);
+    const colsBtn = document.getElementById('pt-reorder-cols-btn');
+    if (colsBtn) colsBtn.classList.toggle('on', reorderColsMode);
+    const rowsBtn = document.getElementById('pt-reorder-rows-btn');
+    if (rowsBtn) rowsBtn.classList.toggle('on', reorderRowsMode);
   }
   function ptSetCell(r, ci, v) { curCat().rows[r][ci] = v; savePages(); }
   function ptRenameCol(ci, el) { curCat().cols[ci] = el.textContent; savePages(); }
@@ -3340,6 +3464,8 @@
     if (!p) return;
     previewPrevView = view;
     view = key;
+    reorderColsMode = false;
+    reorderRowsMode = false;
     const body = document.getElementById('page-preview-body');
     body.innerHTML = pageShellHTML();
     renderActivePage();
