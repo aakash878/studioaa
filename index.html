@@ -206,12 +206,27 @@
   .dash-ctrl-btn.on:hover { opacity: .85; background: var(--accent); color: var(--accent-ink); }
   .cal-refresh.spinning { animation: cal-spin .6s linear; color: var(--accent); }
   @keyframes cal-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-  .cal-select {
+  .cal-picker { position: relative; margin-bottom: 8px; }
+  .cal-picker-btn {
     font-family: 'Inter', sans-serif; font-size: 9.5px; color: var(--gray-2); text-transform: uppercase; letter-spacing: .04em;
-    border: none; background: transparent; outline: none; cursor: pointer; padding: 0 0 6px; margin-bottom: 4px;
-    border-bottom: 1px solid var(--line-soft); width: 100%; max-width: 100%;
+    border: none; background: transparent; outline: none; cursor: pointer; padding: 0 0 6px; width: 100%; max-width: 100%;
+    border-bottom: 1px solid var(--line-soft); text-align: left; display: flex; align-items: center; justify-content: space-between; gap: 6px;
   }
-  .cal-select:hover, .cal-select:focus { color: var(--ink); }
+  .cal-picker-btn:hover { color: var(--ink); }
+  .cal-picker-caret { font-size: 8px; flex-shrink: 0; }
+  .cal-picker-menu {
+    display: none; position: absolute; top: 100%; left: 0; margin-top: 4px; z-index: 20;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 4px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.14); min-width: 180px; max-height: 220px; overflow-y: auto;
+    font-family: 'Inter', sans-serif;
+  }
+  .cal-picker-menu.show { display: block; }
+  .cal-picker-item {
+    font-size: 11px; color: var(--ink); padding: 6px 8px; border-radius: 5px; cursor: pointer; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  .cal-picker-item:hover { background: var(--line-soft); }
+  .cal-picker-item.on { font-weight: 700; color: var(--accent); }
   .hg-pages { display: flex; flex-direction: column; height: 100%; }
   .widget-card {
     background: var(--surface-glass); backdrop-filter: blur(16px) saturate(160%); -webkit-backdrop-filter: blur(16px) saturate(160%);
@@ -1635,8 +1650,20 @@
      pages/categories) ---------- */
   let currentWorkspaceId = null;
   let saveWorkspaceDataTimer = null;
+  // Guards against the worst possible bug in this app: silently overwriting
+  // real Postgres data with placeholder/empty in-memory state. `pages`/`cats`
+  // start out as the generic SEED_* constants at script load, before the
+  // real workspace data has even been fetched \u2014 if a save were ever
+  // triggered in that window (e.g. the initial /data fetch failed due to a
+  // network blip or a Render cold start, and something still called
+  // savePages()/saveCats()), it would PUT the seed placeholders over the
+  // user's actual data, permanently wiping it. This flag only flips true
+  // once a real load (or an intentional first-time seed) has completed, and
+  // every save is a no-op until then.
+  let workspaceDataLoaded = false;
   function saveWorkspaceData() {
     if (!currentWorkspaceId) return;
+    if (!workspaceDataLoaded) { console.warn('Blocked a save before workspace data finished loading \u2014 refusing to risk overwriting real data.'); return; }
     clearTimeout(saveWorkspaceDataTimer);
     saveWorkspaceDataTimer = setTimeout(() => {
       fetch('/api/workspaces/' + currentWorkspaceId + '/data', {
@@ -1759,25 +1786,52 @@
   let calendarTimer = null;
   let calendarList = [];
   let selectedCalendarId = localStorage.getItem('hq_calendar_id') || 'primary';
-  function calendarSelectOptionsHTML() {
-    if (!calendarList.length) {
-      return '<option value="' + esc(selectedCalendarId) + '">' + (selectedCalendarId === 'primary' ? 'Primary calendar' : esc(selectedCalendarId)) + '</option>';
-    }
-    return calendarList.map(c =>
-      '<option value="' + esc(c.id) + '"' + (c.id === selectedCalendarId ? ' selected' : '') + '>' + esc(c.summary || c.id) + '</option>'
+  // A native <select> hands its dropdown popup to the OS, and macOS/Safari
+  // force that popup into the system font no matter what font-family is set
+  // on the element \u2014 there's no CSS override for it. Building this as our
+  // own button + floating menu (same pattern as the "+ Add section" popover)
+  // keeps it fully in Inter, matching the rest of the UI.
+  function calendarPickerLabel() {
+    const cur = calendarList.find(c => c.id === selectedCalendarId);
+    if (cur) return cur.summary || cur.id;
+    return selectedCalendarId === 'primary' ? 'Primary calendar' : selectedCalendarId;
+  }
+  function calendarPickerOptionsHTML() {
+    const list = calendarList.length ? calendarList : [{ id: selectedCalendarId, summary: calendarPickerLabel() }];
+    return list.map(c =>
+      '<div class="cal-picker-item' + (c.id === selectedCalendarId ? ' on' : '') + '" onclick="selectCalendarOption(\'' + String(c.id).replace(/'/g, "\\'") + '\')">' + esc(c.summary || c.id) + '</div>'
     ).join('');
+  }
+  function calendarPickerHTML() {
+    return '<div class="cal-picker" onclick="event.stopPropagation()">' +
+      '<button type="button" class="cal-picker-btn" onclick="toggleCalPickerMenu(event)">' + esc(calendarPickerLabel()) + '<span class="cal-picker-caret">\u25be</span></button>' +
+      '<div class="cal-picker-menu" id="cal-picker-menu">' + calendarPickerOptionsHTML() + '</div>' +
+      '</div>';
+  }
+  function toggleCalPickerMenu(e) {
+    e.stopPropagation();
+    const m = document.getElementById('cal-picker-menu');
+    if (m) m.classList.toggle('show');
+  }
+  document.addEventListener('click', function (e) {
+    const m = document.getElementById('cal-picker-menu');
+    if (m && m.classList.contains('show') && !m.parentElement.contains(e.target)) m.classList.remove('show');
+  });
+  function refreshCalendarPickerUI() {
+    const wrap = document.querySelector('.hg-calendar .cal-picker');
+    if (wrap) wrap.outerHTML = calendarPickerHTML();
   }
   function loadCalendarList() {
     fetch('/api/calendar/list').then(r => r.json()).then(data => {
       calendarList = data.calendars || [];
-      const sel = document.getElementById('cal-select');
-      if (sel) sel.innerHTML = calendarSelectOptionsHTML();
+      refreshCalendarPickerUI();
     }).catch(() => {});
   }
-  function onCalendarSelectChange(sel) {
-    selectedCalendarId = sel.value;
+  function selectCalendarOption(id) {
+    selectedCalendarId = id;
     localStorage.setItem('hq_calendar_id', selectedCalendarId);
     calendarState = { loaded: false, connected: false, reauthRequired: false, events: [] };
+    refreshCalendarPickerUI();
     const body = document.getElementById('calendar-body');
     if (body) body.innerHTML = calendarHTML();
     loadCalendarWidget();
@@ -1922,6 +1976,16 @@
     dragPageKey = null;
     document.querySelectorAll('.drop-target').forEach(el => el.classList.remove('drop-target'));
   }
+  // A page title left completely empty (every character deleted) is
+  // confusing to see in the home list/side panel \u2014 "page" is a much
+  // friendlier fallback than a blank row, and it's still obviously a
+  // placeholder you'll want to rename.
+  function pageNameBlur(el, key) {
+    if (!el.textContent.trim()) { el.textContent = 'page'; renamePage(key, 'page'); }
+  }
+  function pageCatNameBlur(el, key) {
+    if (!el.textContent.trim()) { el.textContent = 'page'; renamePageCat(key, 'page'); }
+  }
   function renamePage(key, text) {
     const p = pages.find(x => x.key === key);
     if (!p) return;
@@ -1958,7 +2022,7 @@
         ' ondragstart="pageDragStart(event, \'' + p.key + '\')" ondragover="pageDragOver(event, \'' + p.key + '\')" ondragleave="pageDragLeave(event)" ondrop="pageDrop(event, \'' + p.key + '\')" ondragend="pageDragEnd(event)"' +
         ' onclick="openPage(\'' + p.key + '\')">' +
         (entry.hasChildren ? '<span class="prow-collapse' + (collapsed ? '' : ' open') + '" onclick="event.stopPropagation(); toggleCollapse(\'' + p.key + '\')" title="Show/hide subpages">\u25b6</span>' : '<span class="prow-collapse-spacer"></span>') +
-        '<span class="prow-name" id="prowname-' + p.key + '" contenteditable spellcheck="false" onclick="event.stopPropagation()" onkeydown="return blurOnEnter(event)" oninput="renamePage(\'' + p.key + '\', this.textContent)">' + esc(p.label) + '</span>' +
+        '<span class="prow-name" id="prowname-' + p.key + '" contenteditable spellcheck="false" onclick="event.stopPropagation()" onkeydown="return blurOnEnter(event)" oninput="renamePage(\'' + p.key + '\', this.textContent)" onblur="pageNameBlur(this, \'' + p.key + '\')">' + esc(p.label) + '</span>' +
         '<span class="prow-spacer"></span>' +
         (pinned
           ? '<span class="prow-pin-badge" onclick="event.stopPropagation(); openPinModalForWidget(\'' + pinned.id + '\')" title="Pinned to home &mdash; click to change view or unpin">pinned</span>'
@@ -1996,7 +2060,7 @@
         ' ondragstart="pageDragStart(event, \'' + p.key + '\')" ondragover="pageDragOver(event, \'' + p.key + '\')" ondragleave="pageDragLeave(event)" ondrop="pageDrop(event, \'' + p.key + '\')" ondragend="pageDragEnd(event)"' +
         ' onclick="openPage(\'' + p.key + '\')">' +
         (entry.hasChildren ? '<span class="sp-collapse' + (collapsed ? '' : ' open') + '" onclick="event.stopPropagation(); toggleCollapse(\'' + p.key + '\')">\u25b6</span>' : '') +
-        '<span class="sp-page-name" id="spname-' + p.key + '" contenteditable spellcheck="false" onclick="event.stopPropagation()" onkeydown="return blurOnEnter(event)" oninput="renamePage(\'' + p.key + '\', this.textContent)">' + esc(p.label) + '</span>' +
+        '<span class="sp-page-name" id="spname-' + p.key + '" contenteditable spellcheck="false" onclick="event.stopPropagation()" onkeydown="return blurOnEnter(event)" oninput="renamePage(\'' + p.key + '\', this.textContent)" onblur="pageNameBlur(this, \'' + p.key + '\')">' + esc(p.label) + '</span>' +
         (pinned ? '<span class="sp-page-pinned" title="Pinned to home dashboard">(home page)</span>' : '') +
         '</div>';
     }).join('');
@@ -2693,7 +2757,7 @@
   function pageShellHTML() {
     return '<div class="shell"><nav id="page-nav"></nav><main>' +
       '<div id="pt-sheet-body" style="padding:28px 32px 80px;">' +
-      '<div class="page-title" id="pt-title" contenteditable spellcheck="false" onkeydown="return blurOnEnter(event)" oninput="renamePageCat(curPage().activeCatKey, this.textContent)"></div><div class="page-sub" id="pt-sub"></div>' +
+      '<div class="page-title" id="pt-title" contenteditable spellcheck="false" onkeydown="return blurOnEnter(event)" oninput="renamePageCat(curPage().activeCatKey, this.textContent)" onblur="pageCatNameBlur(this, curPage().activeCatKey)"></div><div class="page-sub" id="pt-sub"></div>' +
       '<div id="pt-filter-bar-slot"></div>' +
       '<div class="table-wrap"><table id="pt-tbl"><thead id="pt-thead"></thead><tbody id="pt-tbody"></tbody></table></div>' +
       '<div class="add-row" onclick="ptAddRow()">+ New</div>' +
@@ -2854,8 +2918,8 @@
         '<button onclick="clearBlockSelection()">Cancel</button>' +
       '</div>' +
       blocks.map((b, bi) => {
-      if (b.t === 'h2') return docBlockWrap(bi, '<div class="doc-h2" data-bi="' + bi + '" contenteditable onfocus="clearBlockPlaceholder(this)" oninput="docSetHeading(' + bi + ', this)">' + b.html + '</div>');
-      if (b.t === 'h3') return docBlockWrap(bi, '<div class="doc-h3" data-bi="' + bi + '" contenteditable onfocus="clearBlockPlaceholder(this)" oninput="docSetBlock(' + bi + ', this.innerHTML)">' + b.html + '</div>');
+      if (b.t === 'h2') return docBlockWrap(bi, '<div class="doc-h2" data-bi="' + bi + '" contenteditable onfocus="clearBlockPlaceholder(this)" oninput="docSetHeading(' + bi + ', this)" onkeydown="return headingEnterKey(event, ' + bi + ')">' + b.html + '</div>');
+      if (b.t === 'h3') return docBlockWrap(bi, '<div class="doc-h3" data-bi="' + bi + '" contenteditable onfocus="clearBlockPlaceholder(this)" oninput="docSetBlock(' + bi + ', this.innerHTML)" onkeydown="return headingEnterKey(event, ' + bi + ')">' + b.html + '</div>');
       if (b.t === 'p') return docBlockWrap(bi, '<div class="doc-p" data-bi="' + bi + '" contenteditable onfocus="clearBlockPlaceholder(this)" oninput="docSetBlock(' + bi + ', this.innerHTML)">' + b.html + '</div>');
       if (b.t === 'hr') return docBlockWrap(bi, '<hr class="doc-hr">');
       if (b.t === 'table') return docBlockWrap(bi, docTableHTML(b, bi));
@@ -2999,6 +3063,20 @@
     document.getElementById('doc-body').innerHTML = docHTML(curCat().blocks);
   }
   function docSetBlock(bi, html) { curCat().blocks[bi].html = html; savePages(); }
+  // Pressing Enter inside a heading shouldn't grow the heading itself into a
+  // multi-line wall of big bold text \u2014 it should end the heading and drop
+  // you into a fresh plain-text block right underneath, same as everywhere
+  // else in the app defaults to text-first.
+  function headingEnterKey(e, bi) {
+    if (e.key !== 'Enter' || e.shiftKey) return true;
+    e.preventDefault();
+    const c = curCat();
+    c.blocks.splice(bi + 1, 0, { t: 'p', html: '' });
+    savePages();
+    renderDoc();
+    focusBlock(bi + 1);
+    return false;
+  }
   // The first heading in a doc doubles as that category's tab title (and the
   // page's own label too, while it's still the page's only category) -- so
   // typing over the "Untitled" placeholder heading renames it instead of
@@ -3185,8 +3263,17 @@
       });
       frag.appendChild(cluster);
     });
+    // Rebuilding the grid detaches every card (including whatever currently
+    // has focus, e.g. the calendar refresh button mid-spin) and reattaches
+    // it a tick later \u2014 losing focus like that makes some browsers reset
+    // scroll to the top of the page, which read as "the refresh button
+    // jumps to the top" instead of just spinning in place. Snapshotting and
+    // restoring scroll position around the rebuild keeps the page exactly
+    // where it was.
+    const scrollX = window.scrollX, scrollY = window.scrollY;
     grid.innerHTML = '';
     grid.appendChild(frag);
+    window.scrollTo(scrollX, scrollY);
   }
 
   /* =====================================================================
@@ -3334,8 +3421,7 @@
     if (key === 'status') return '<div class="hg-status widget-card">' + widgetHeaderHTML('status') + statusHTML() + '</div>';
     if (key === 'priority') return '<div class="hg-priority widget-card">' + widgetHeaderHTML('priority') + priorityHTML() + '</div>';
     if (key === 'calendar') return '<div class="hg-calendar widget-card">' +
-      '<select class="cal-select" id="cal-select" onclick="event.stopPropagation()" onchange="onCalendarSelectChange(this)">' + calendarSelectOptionsHTML() + '</select>' +
-      widgetHeaderHTML('calendar') + '<div id="calendar-body">' + calendarHTML() + '</div></div>';
+      widgetHeaderHTML('calendar') + calendarPickerHTML() + '<div id="calendar-body">' + calendarHTML() + '</div></div>';
     const w = pinnedWidgets.find(x => x.id === key);
     return w ? pinnedWidgetCardHTML(w) : '';
   }
@@ -3566,18 +3652,24 @@
     document.getElementById('members-btn').style.display = currentWorkspaceRole === 'owner' ? '' : 'none';
     localStorage.setItem('hq_last_workspace_id', String(id));
     renderWorkspaceSwitcher(knownWorkspaces);
-    return fetch('/api/workspaces/' + id + '/data').then(r => r.json()).then(data => {
+    workspaceDataLoaded = false;
+    return fetch('/api/workspaces/' + id + '/data').then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status + ' loading workspace data');
+      return r.json();
+    }).then(data => {
       const isEmpty = !data.pages || !data.pages.length;
       if (isEmpty) {
         // Brand-new workspace: lazy-seed from the demo constants and persist
         // immediately, so this workspace has real content from here on.
         pages = JSON.parse(JSON.stringify(SEED_PAGES));
         cats = JSON.parse(JSON.stringify(SEED_CATS));
+        workspaceDataLoaded = true;
         savePages();
         saveCats();
       } else {
         pages = data.pages;
         cats = data.categories || SEED_CATS;
+        workspaceDataLoaded = true;
       }
       widgetLabels = Object.assign(defaultWidgetLabels(), (data.widgets && data.widgets.labels) || {});
       pinnedWidgets = (data.widgets && data.widgets.pinned) || [];
@@ -3588,6 +3680,13 @@
       render();
       if (isInitialBoot) maybeOnboard();
       else showToast('Switched to ' + workspaceName);
+    }).catch(err => {
+      // Never fall through to rendering blank/seed state on a failed load \u2014
+      // that's exactly the "everything's gone" scenario. Leave
+      // workspaceDataLoaded false (blocking all saves) and tell the user
+      // plainly instead of silently showing an empty workspace.
+      console.error('Failed to load workspace data:', err);
+      showToast('Couldn\u2019t load your workspace \u2014 refresh to try again. (Nothing was changed or lost.)');
     });
   }
 
