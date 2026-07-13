@@ -389,14 +389,6 @@
   .cat:hover .cat-del { display: inline; }
   .cat:hover .cat-n { display: none; }
   .cat-del:hover { color: var(--ink); }
-  .cat-move {
-    display: none; color: var(--gray-2); cursor: pointer; font-size: 13px;
-    flex-shrink: 0; line-height: 1; padding: 0 1px; font-weight: 700;
-  }
-  .cat:hover .cat-move { display: inline; }
-  .cat-move:hover { color: var(--ink); }
-  .cat-move-disabled { visibility: hidden; pointer-events: none; }
-  .cat.on .cat-move { color: var(--accent-ink); opacity: .6; }
   .cat-add {
     display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 6px;
     font-size: 12.5px; color: var(--gray-2); cursor: pointer; margin-top: 4px;
@@ -2292,25 +2284,15 @@
   function catNavHTML(list, activeK, fns) {
     return list.map((c, i) =>
       '<div class="cat' + (c.key === activeK ? ' on' : '') + '" onclick="' + fns.setActive + '(\'' + c.key + '\')">' +
-        '<span class="cat-move' + (i === 0 ? ' cat-move-disabled' : '') + '" onclick="event.stopPropagation(); ' + fns.move + '(\'' + c.key + '\', -1)" title="Shift left">\u2039</span>' +
         '<span class="cat-name" id="' + fns.idPrefix + c.key + '" contenteditable spellcheck="false" onclick="event.stopPropagation()" onkeydown="return blurOnEnter(event)" oninput="' + fns.rename + '(\'' + c.key + '\', this.textContent)">' + esc(c.label) + '</span>' +
         '<span class="cat-n">' + ((c.type === 'notes' || c.type === 'doc') ? '' : c.rows.length) + '</span>' +
-        '<span class="cat-move' + (i === list.length - 1 ? ' cat-move-disabled' : '') + '" onclick="event.stopPropagation(); ' + fns.move + '(\'' + c.key + '\', 1)" title="Shift right">\u203a</span>' +
         '<button class="cat-del" onclick="event.stopPropagation(); ' + fns.del + '(\'' + c.key + '\')" title="Delete">\u00d7</button>' +
         '</div>').join('');
   }
   function renderNav() {
     document.getElementById('nav').innerHTML =
-      catNavHTML(cats, activeKey, { setActive: 'setActive', rename: 'renameCat', del: 'delCat', move: 'moveCat', idPrefix: 'catname-' }) +
+      catNavHTML(cats, activeKey, { setActive: 'setActive', rename: 'renameCat', del: 'delCat', idPrefix: 'catname-' }) +
       '<div class="cat-add" onclick="addCat()">+ New category</div>';
-  }
-  function moveCat(key, dir) {
-    const i = cats.findIndex(c => c.key === key);
-    const j = i + dir;
-    if (i < 0 || j < 0 || j >= cats.length) return;
-    const tmp = cats[i]; cats[i] = cats[j]; cats[j] = tmp;
-    saveCats();
-    renderNav();
   }
   function renameCat(key, text) {
     const c = cats.find(x => x.key === key);
@@ -2698,23 +2680,13 @@
       showToast('Deleted "' + label + '" \u2014 \u2318Z to undo');
     });
   }
-  function movePageCat(key, dir) {
-    const p = curPage();
-    if (!p) return;
-    const i = p.cats.findIndex(c => c.key === key);
-    const j = i + dir;
-    if (i < 0 || j < 0 || j >= p.cats.length) return;
-    const tmp = p.cats[i]; p.cats[i] = p.cats[j]; p.cats[j] = tmp;
-    savePages();
-    renderPageNav();
-  }
   function renderPageNav() {
     const nav = document.getElementById('page-nav');
     if (!nav) return;
     const p = curPage();
     if (!p) return;
     ensurePageCats(p);
-    nav.innerHTML = catNavHTML(p.cats, p.activeCatKey, { setActive: 'setPageActive', rename: 'renamePageCat', del: 'delPageCat', move: 'movePageCat', idPrefix: 'pagecatname-' }) +
+    nav.innerHTML = catNavHTML(p.cats, p.activeCatKey, { setActive: 'setPageActive', rename: 'renamePageCat', del: 'delPageCat', idPrefix: 'pagecatname-' }) +
       '<div class="cat-add" id="page-cat-add" onclick="addPageCat()">+ New category</div>' +
       '<div class="cat-add" onclick="goHome()">\u2190 Home</div>';
   }
