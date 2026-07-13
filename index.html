@@ -3226,7 +3226,16 @@
     // \u2014 permanently. That's what was making dashboard cards (pinned widgets,
     // schedule/status, sometimes the pages card) vanish after a few seconds
     // on the home screen.
-    const cards = Array.from(grid.querySelectorAll('.dash-card'));
+    // Focus mode hides the schedule/status cards with CSS (display: none)
+    // rather than removing them, so they still show up in this query. Left
+    // in, a hidden pair still forms an empty "cluster" wrapper that's a real
+    // flex item in .home-grid \u2014 collapsed to zero height but still
+    // consuming a 16px gap above and below it, which is what turned the
+    // remaining visible cards (pages/priority/calendar) into "3 weirdly
+    // spaced widgets" with a blank gap where schedule+status used to be.
+    // Filtering to only visible cards here means a fully-hidden pair simply
+    // never becomes a run/cluster at all.
+    const cards = Array.from(grid.querySelectorAll('.dash-card')).filter(el => el.offsetParent !== null);
     if (!cards.length) return;
     const heights = new Map();
     cards.forEach(el => heights.set(el, el.offsetHeight));
