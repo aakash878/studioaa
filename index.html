@@ -289,6 +289,28 @@
   }
   .pr-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pr-meta { font-size: 10.5px; color: var(--gray-2); flex-shrink: 0; text-transform: capitalize; }
+  .visuals-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-top: 4px; }
+  .hg-visual-add {
+    display: flex; align-items: center; justify-content: center; min-height: 64px;
+    border: 1px dashed var(--line); color: var(--gray-2); font-size: 12px; font-weight: 700;
+    cursor: pointer; background: none; box-shadow: none;
+  }
+  .hg-visual-add:hover { color: var(--ink); border-color: var(--gray-2); background: var(--hover); }
+  .visual-editor { display: flex; flex-direction: column; gap: 12px; max-width: 460px; }
+  .ve-connected { font-size: 11px; color: var(--gray-2); text-transform: capitalize; }
+  .ve-title { font-size: 20px; font-weight: 800; border: none; outline: none; background: none; padding: 0; font-family: inherit; color: var(--ink); }
+  .ve-preview { border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+  .ve-fields { display: flex; flex-direction: column; gap: 8px; }
+  .ve-row { display: flex; align-items: center; gap: 10px; }
+  .ve-row label { width: 90px; flex-shrink: 0; font-size: 12px; color: var(--gray-1); }
+  .ve-row .modal-input { flex: 1; margin-bottom: 0; }
+  .ve-list { display: flex; flex-direction: column; gap: 6px; }
+  .ve-list-row { display: flex; align-items: center; gap: 8px; }
+  .ve-list-row .modal-input { flex: 1; margin-bottom: 0; width: auto; }
+  .ve-date { width: 90px; flex-shrink: 0; }
+  .ve-item-del { border: none; background: none; color: var(--gray-2); cursor: pointer; font-size: 14px; }
+  .ve-item-del:hover { color: #b04030; }
+  .ve-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
   .pin-sheet { font-size: 11px; }
   .pin-sheet-row { display: flex; gap: 10px; padding: 4px 0; border-bottom: 1px solid var(--line-soft); }
   .pin-sheet-row:last-child { border-bottom: none; }
@@ -1096,6 +1118,34 @@
   </div>
 </div>
 
+<div class="modal-backdrop" id="visual-type-backdrop" onclick="if(event.target===this) closeVisualTypeModal()">
+  <div class="modal-card">
+    <div class="modal-title">New visual</div>
+    <div class="modal-hint">Visuals hold their own data \u2014 separate from pages and sheets. Pick a type.</div>
+    <div class="pin-type-grid">
+      <div class="pin-type-opt" onclick="createVisual('progress')">
+        <div class="pin-type-name">Progress</div>
+        <div class="pin-type-sub">Done / total</div>
+      </div>
+      <div class="pin-type-opt" onclick="createVisual('stat')">
+        <div class="pin-type-name">Stat</div>
+        <div class="pin-type-sub">Big number</div>
+      </div>
+      <div class="pin-type-opt" onclick="createVisual('checklist')">
+        <div class="pin-type-name">Checklist</div>
+        <div class="pin-type-sub">Checked rows</div>
+      </div>
+      <div class="pin-type-opt" onclick="createVisual('timeline')">
+        <div class="pin-type-name">Timeline</div>
+        <div class="pin-type-sub">Dated list</div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeVisualTypeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div class="page-preview-backdrop" id="page-preview-backdrop" onclick="if(event.target===this) closePagePreview()">
   <div class="page-preview-card">
     <button class="page-preview-close" onclick="closePagePreview()" title="Close">&times;</button>
@@ -1499,7 +1549,8 @@
       schedule: { title: 'Next few days', sub: 'Living timeline \u00b7 posting & delivery dates' },
       status: { title: 'Job status', sub: 'Across all jobs' },
       priority: { title: 'What to work on today', sub: 'Ranked across open jobs & objects' },
-      calendar: { title: 'This week', sub: 'Live from Google Calendar' }
+      calendar: { title: 'This week', sub: 'Live from Google Calendar' },
+      visuals: { title: 'Visuals', sub: 'Progress bars, stats & checklists you build yourself' }
     };
   }
   let widgetLabels = defaultWidgetLabels();
@@ -1684,7 +1735,7 @@
       fetch('/api/workspaces/' + currentWorkspaceId + '/data', {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ pages, categories: cats, widgets: { labels: widgetLabels, pinned: pinnedWidgets, order: dashboardOrder, sizes: dashboardSizes, hidden: Array.from(hiddenBuiltins) } })
+        body: JSON.stringify({ pages, categories: cats, widgets: { labels: widgetLabels, pinned: pinnedWidgets, order: dashboardOrder, sizes: dashboardSizes, hidden: Array.from(hiddenBuiltins) }, visuals })
       }).catch(() => {});
     }, 400);
   }
@@ -2058,7 +2109,7 @@
   // (the practical equivalent of deleting a built-in), and move up/down.
   function builtinWidgetRowsHTML() {
     const order = orderedCardKeys();
-    return BUILTIN_CARD_KEYS.filter(k => k !== 'pages').map(key => {
+    return BUILTIN_CARD_KEYS.filter(k => k !== 'pages' && k !== 'visuals').map(key => {
       const hidden = hiddenBuiltins.has(key);
       const label = (widgetLabels[key] || defaultWidgetLabels()[key]).title;
       const idx = order.indexOf(key);
@@ -3297,6 +3348,7 @@
   function closePagePreview() {
     document.getElementById('page-preview-backdrop').classList.remove('show');
     document.getElementById('page-preview-body').innerHTML = '';
+    if (editingVisualId !== null) { editingVisualId = null; render(); return; }
     view = previewPrevView || 'home';
     render();
   }
@@ -3517,6 +3569,159 @@
   }
 
   /* =====================================================================
+     VISUALS: a standalone content type, separate from pages/sheets. A
+     visual isn't a view onto some other page's data (that's what pinning a
+     page above is for) \u2014 it's its own small piece of data (a progress
+     count, a stat, a checklist, a timeline) that you create and edit
+     directly, with its own dedicated tooling (openVisualEditor below)
+     rather than the doc/table page editor. Lives in its own "Visuals"
+     section on the dashboard (see cardInnerHTML's 'visuals' case), not
+     mixed into the Pages list.
+     ===================================================================== */
+  let visuals = [];
+  let editingVisualId = null;
+  function newVisualDefaults(type) {
+    if (type === 'progress') return { done: 0, total: 5 };
+    if (type === 'stat') return { value: '0', unit: '' };
+    if (type === 'checklist') return { items: [{ label: 'New item', done: false }] };
+    if (type === 'timeline') return { items: [{ date: '', label: 'New item' }] };
+    return {};
+  }
+  function openVisualTypeModal() { document.getElementById('visual-type-backdrop').classList.add('show'); }
+  function closeVisualTypeModal() { document.getElementById('visual-type-backdrop').classList.remove('show'); }
+  function createVisual(type) {
+    const v = Object.assign({ id: 'vis-' + Date.now().toString(36).slice(-6), type: type, label: 'New visual' }, newVisualDefaults(type));
+    visuals.push(v);
+    saveWorkspaceData();
+    closeVisualTypeModal();
+    render();
+    openVisualEditor(v.id);
+  }
+  function deleteVisual(id) {
+    const v = visuals.find(x => x.id === id);
+    if (!v) return;
+    showConfirmModal('Delete "' + v.label + '"?', function () {
+      visuals = visuals.filter(x => x.id !== id);
+      saveWorkspaceData();
+      closePagePreview();
+    });
+  }
+  function renameVisual(id, text) {
+    const v = visuals.find(x => x.id === id);
+    if (!v) return;
+    v.label = text;
+    saveWorkspaceData();
+    const row = document.getElementById('visual-title-' + id);
+    if (row && row.textContent !== text) row.textContent = text;
+  }
+  function visualBodyHTML(v) {
+    if (v.type === 'progress') {
+      const pct = v.total > 0 ? Math.round(v.done / v.total * 100) : 0;
+      return '<div class="st-row"><span class="st-label">Progress</span>' +
+        '<span class="st-bar-wrap"><span class="st-bar" style="width:' + pct + '%"></span></span>' +
+        '<span class="st-count">' + v.done + '/' + v.total + '</span></div>';
+    }
+    if (v.type === 'stat') {
+      return '<div class="pin-stat"><div class="pin-stat-num">' + esc(v.value) + '</div><div class="pin-stat-label">' + esc(v.unit || '') + '</div></div>';
+    }
+    if (v.type === 'checklist') {
+      if (!v.items || !v.items.length) return '<div class="widget-empty">No items yet.</div>';
+      return v.items.slice(0, 6).map(it => '<div class="chk-item' + (it.done ? ' chk-done' : '') + '"><span class="chk-box">' + (it.done ? '\u2713' : '') + '</span><span class="chk-label">' + esc(it.label) + '</span></div>').join('');
+    }
+    if (v.type === 'timeline') {
+      if (!v.items || !v.items.length) return '<div class="widget-empty">Nothing dated yet.</div>';
+      return v.items.slice(0, 8).map(it => '<div class="tl-item"><span class="tl-date">' + esc(it.date || '') + '</span><span class="tl-label">' + esc(it.label) + '</span></div>').join('');
+    }
+    return '';
+  }
+  function visualCardHTML(v) {
+    return '<div class="widget-card hg-pinned hg-clickable" onclick="openVisualEditor(\'' + v.id + '\')" title="Click to edit">' +
+      '<div class="pin-actions" onclick="event.stopPropagation()">' +
+      '<button class="pin-unpin" onclick="deleteVisual(\'' + v.id + '\')" title="Delete visual">Delete</button>' +
+      '</div>' +
+      '<div class="widget-title" id="visual-title-' + v.id + '">' + esc(v.label) + '</div>' +
+      visualBodyHTML(v) + '</div>';
+  }
+  // The editor is its own dedicated tooling, separate from the doc/table
+  // page editor \u2014 plain labeled fields for exactly the shape of data each
+  // visual type holds, opened in the same almost-full-screen overlay used
+  // to open a real page in place (see openPagePreview / closePagePreview).
+  function visualEditorHTML(v) {
+    let fields = '';
+    if (v.type === 'progress') {
+      fields = '<div class="ve-row"><label>Done</label><input class="modal-input" type="number" min="0" value="' + v.done + '" oninput="setVisualField(\'' + v.id + '\', \'done\', Number(this.value))"></div>' +
+        '<div class="ve-row"><label>Total</label><input class="modal-input" type="number" min="0" value="' + v.total + '" oninput="setVisualField(\'' + v.id + '\', \'total\', Number(this.value))"></div>';
+    } else if (v.type === 'stat') {
+      fields = '<div class="ve-row"><label>Value</label><input class="modal-input" value="' + esc(v.value) + '" oninput="setVisualField(\'' + v.id + '\', \'value\', this.value)"></div>' +
+        '<div class="ve-row"><label>Unit / label</label><input class="modal-input" value="' + esc(v.unit || '') + '" oninput="setVisualField(\'' + v.id + '\', \'unit\', this.value)"></div>';
+    } else if (v.type === 'checklist' || v.type === 'timeline') {
+      fields = '<div class="ve-list">' + (v.items || []).map((it, i) =>
+        '<div class="ve-list-row">' +
+        (v.type === 'timeline'
+          ? '<input class="modal-input ve-date" placeholder="Date" value="' + esc(it.date || '') + '" oninput="setVisualItemField(\'' + v.id + '\', ' + i + ', \'date\', this.value)">'
+          : '<input type="checkbox"' + (it.done ? ' checked' : '') + ' onchange="setVisualItemField(\'' + v.id + '\', ' + i + ', \'done\', this.checked)">') +
+        '<input class="modal-input" value="' + esc(it.label) + '" oninput="setVisualItemField(\'' + v.id + '\', ' + i + ', \'label\', this.value)">' +
+        '<button class="ve-item-del" onclick="delVisualItem(\'' + v.id + '\', ' + i + ')" title="Remove">\u00d7</button>' +
+        '</div>'
+      ).join('') + '</div><div class="doc-addblock" onclick="addVisualItem(\'' + v.id + '\')">+ add item</div>';
+    }
+    return '<div class="visual-editor">' +
+      '<div class="ve-connected">Visual \u00b7 ' + esc(v.type) + '</div>' +
+      '<input class="ve-title" value="' + esc(v.label) + '" oninput="renameVisual(\'' + v.id + '\', this.value)">' +
+      '<div class="ve-preview" id="ve-preview-body">' + visualBodyHTML(v) + '</div>' +
+      '<div class="ve-fields">' + fields + '</div>' +
+      '<div class="ve-actions">' +
+      '<button class="modal-btn" style="color:#b04030;" onclick="deleteVisual(\'' + v.id + '\')">Delete</button>' +
+      '<button class="modal-btn primary" onclick="closePagePreview()">Done</button>' +
+      '</div></div>';
+  }
+  function refreshVisualEditorPreview(id) {
+    const v = visuals.find(x => x.id === id);
+    const el = document.getElementById('ve-preview-body');
+    if (v && el) el.innerHTML = visualBodyHTML(v);
+    if (v) {
+      const card = document.getElementById('visual-title-' + id);
+      if (card) card.parentElement.outerHTML = visualCardHTML(v);
+    }
+  }
+  function setVisualField(id, field, value) {
+    const v = visuals.find(x => x.id === id);
+    if (!v) return;
+    v[field] = value;
+    saveWorkspaceData();
+    refreshVisualEditorPreview(id);
+  }
+  function setVisualItemField(id, idx, field, value) {
+    const v = visuals.find(x => x.id === id);
+    if (!v || !v.items || !v.items[idx]) return;
+    v.items[idx][field] = value;
+    saveWorkspaceData();
+    refreshVisualEditorPreview(id);
+  }
+  function addVisualItem(id) {
+    const v = visuals.find(x => x.id === id);
+    if (!v) return;
+    if (!v.items) v.items = [];
+    v.items.push(v.type === 'timeline' ? { date: '', label: 'New item' } : { label: 'New item', done: false });
+    saveWorkspaceData();
+    openVisualEditor(id);
+  }
+  function delVisualItem(id, idx) {
+    const v = visuals.find(x => x.id === id);
+    if (!v || !v.items) return;
+    v.items.splice(idx, 1);
+    saveWorkspaceData();
+    openVisualEditor(id);
+  }
+  function openVisualEditor(id) {
+    const v = visuals.find(x => x.id === id);
+    if (!v) return;
+    editingVisualId = id;
+    document.getElementById('page-preview-body').innerHTML = visualEditorHTML(v);
+    document.getElementById('page-preview-backdrop').classList.add('show');
+  }
+
+  /* =====================================================================
      DASHBOARD LAYOUT: every bento card (the 5 built-ins + every pinned
      widget) can be dragged to reorder and toggled between half/full width
      \u2014 order + sizes persist per workspace via saveWorkspaceData(). Each
@@ -3531,15 +3736,15 @@
   // since they're computed views rather than real pages that can be removed
   // outright. Managed from the Pages list, same spot pinned pages are managed.
   let hiddenBuiltins = new Set();
-  const BUILTIN_CARD_KEYS = ['pages', 'schedule', 'status', 'priority', 'calendar'];
-  const DEFAULT_CARD_SIZE = { pages: 'full', schedule: 'half', status: 'half', priority: 'full', calendar: 'full' };
+  const BUILTIN_CARD_KEYS = ['pages', 'visuals', 'schedule', 'status', 'priority', 'calendar'];
+  const DEFAULT_CARD_SIZE = { pages: 'full', visuals: 'full', schedule: 'half', status: 'half', priority: 'full', calendar: 'full' };
   function toggleBuiltinVisible(key) {
     if (hiddenBuiltins.has(key)) hiddenBuiltins.delete(key); else hiddenBuiltins.add(key);
     saveWorkspaceData();
     render();
   }
   function currentCardKeys() {
-    return BUILTIN_CARD_KEYS.filter(k => k === 'pages' || !hiddenBuiltins.has(k)).concat(pinnedWidgets.map(w => w.id));
+    return BUILTIN_CARD_KEYS.filter(k => k === 'pages' || k === 'visuals' || !hiddenBuiltins.has(k)).concat(pinnedWidgets.map(w => w.id));
   }
   function orderedCardKeys() {
     const all = currentCardKeys();
@@ -3557,6 +3762,12 @@
   function cardInnerHTML(key) {
     if (key === 'pages') {
       return '<div class="hg-pages page-list"><div class="hg-pages-header">' + widgetHeaderHTML('pages') + '</div>' + pagesListHTMLCache + '</div>';
+    }
+    if (key === 'visuals') {
+      return '<div class="hg-visuals widget-card"><div class="hg-pages-header">' + widgetHeaderHTML('visuals') + '</div>' +
+        '<div class="visuals-grid">' + visuals.map(v => visualCardHTML(v)).join('') +
+        '<div class="widget-card hg-visual-add" onclick="openVisualTypeModal()">+ New visual</div>' +
+        '</div></div>';
     }
     if (key === 'schedule') return '<div class="hg-schedule widget-card">' + widgetHeaderHTML('schedule') + scheduleHTML() + '</div>';
     if (key === 'status') return '<div class="hg-status widget-card">' + widgetHeaderHTML('status') + statusHTML() + '</div>';
@@ -3817,6 +4028,7 @@
       dashboardOrder = (data.widgets && data.widgets.order) || [];
       dashboardSizes = (data.widgets && data.widgets.sizes) || {};
       hiddenBuiltins = new Set((data.widgets && data.widgets.hidden) || []);
+      visuals = data.visuals || [];
       activeKey = localStorage.getItem('hq_active_cat') || cats[0].key;
       maybeLoadLolaDemo(); // also sets hq_onboarded, so maybeOnboard() below is a no-op when it fires
       render();
