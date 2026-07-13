@@ -2915,10 +2915,13 @@
      whichever category is currently active on the page (see curCat()).
      ===================================================================== */
   // Every brand-new doc (a page, a note, or a "Page" category) starts with
-  // a single plain text box \u2014 no heading, no type picker \u2014 so you can
-  // just start typing immediately. Headings, tables, toggles, etc. are all
-  // one click away via "+ Add section" if you want them.
-  function defaultDocBlocks(label) { return [{ t: 'p', html: 'Type something\u2026' }]; }
+  // its title as a heading (doubling as the category tab title \u2014 see
+  // docSetHeading) followed by a plain text block, so there's already a
+  // clear place to start typing. Tables, toggles, etc. are all one click
+  // away via "+ Add section" if you want them.
+  function defaultDocBlocks(label) {
+    return [{ t: 'h2', html: esc(label || 'New heading') }, { t: 'p', html: 'Type something\u2026' }];
+  }
   function itemRef(items, path) {
     let arr = items;
     for (let i = 0; i < path.length - 1; i++) arr = arr[path[i]].sub;
@@ -2928,7 +2931,7 @@
     return items.map((it, i) => {
       const path = prefix ? prefix + '.' + i : '' + i;
       let html = '<li class="doc-li' + (prefix ? ' sub' : '') + '">' +
-        '<span class="doc-li-text" contenteditable onfocus="clearBlockPlaceholder(this)" oninput="docSetItem(' + bi + ',\'' + path + '\', this.innerHTML)">' + it.html + '</span>' +
+        '<span class="doc-li-text" data-li-path="' + path + '" contenteditable onfocus="clearBlockPlaceholder(this)" oninput="docSetItem(' + bi + ',\'' + path + '\', this.innerHTML)" onkeydown="return listItemEnterKey(event, ' + bi + ', \'' + path + '\')">' + it.html + '</span>' +
         '<button class="doc-li-del" onclick="docDelItem(' + bi + ',\'' + path + '\')" title="Remove">\u00d7</button>' +
         '</li>';
       if (it.sub && it.sub.length) html += '<ul class="doc-ul">' + docListHTML(it.sub, bi, path) + '</ul>';
@@ -2984,7 +2987,7 @@
       blocks.map((b, bi) => {
       if (b.t === 'h2') return docBlockWrap(bi, '<div class="doc-h2" data-bi="' + bi + '" contenteditable onfocus="clearBlockPlaceholder(this)" oninput="docSetHeading(' + bi + ', this)" onkeydown="return headingEnterKey(event, ' + bi + ')">' + b.html + '</div>');
       if (b.t === 'h3') return docBlockWrap(bi, '<div class="doc-h3" data-bi="' + bi + '" contenteditable onfocus="clearBlockPlaceholder(this)" oninput="docSetBlock(' + bi + ', this.innerHTML)" onkeydown="return headingEnterKey(event, ' + bi + ')">' + b.html + '</div>');
-      if (b.t === 'p') return docBlockWrap(bi, '<div class="doc-p" data-bi="' + bi + '" contenteditable onfocus="clearBlockPlaceholder(this)" oninput="docSetBlock(' + bi + ', this.innerHTML)">' + b.html + '</div>');
+      if (b.t === 'p') return docBlockWrap(bi, '<div class="doc-p" data-bi="' + bi + '" contenteditable onfocus="clearBlockPlaceholder(this)" oninput="docSetBlock(' + bi + ', this.innerHTML)" onkeydown="return paragraphEnterKey(event, ' + bi + ')">' + b.html + '</div>');
       if (b.t === 'hr') return docBlockWrap(bi, '<hr class="doc-hr">');
       if (b.t === 'table') return docBlockWrap(bi, docTableHTML(b, bi));
       if (b.t === 'toggle') return docBlockWrap(bi, docToggleHTML(b, bi));
@@ -3139,6 +3142,58 @@
     savePages();
     renderDoc();
     focusBlock(bi + 1);
+    return false;
+  }
+  function focusListItem(bi, path) {
+    const el = document.querySelector('#doc-body .doc-block[data-block="' + bi + '"] [data-li-path="' + path + '"]');
+    if (!el) return;
+    el.scrollIntoView({ block: 'center' });
+    el.focus();
+    clearBlockPlaceholder(el);
+    const sel = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+  // Pressing Enter inside the default text block starts a bulleted list
+  // right underneath \u2014 that's the most common "next line" action while
+  // jotting notes, so it happens automatically instead of requiring
+  // "+ Add section" every time. Enter again while already in that list just
+  // continues it (see listItemEnterKey) instead of starting a second one.
+  function paragraphEnterKey(e, bi) {
+    if (e.key !== 'Enter' || e.shiftKey) return true;
+    e.preventDefault();
+    const c = curCat();
+    const next = c.blocks[bi + 1];
+    if (next && next.t === 'ul') {
+      next.items.push({ html: '' });
+      savePages();
+      renderDoc();
+      focusListItem(bi + 1, '' + (next.items.length - 1));
+    } else {
+      c.blocks.splice(bi + 1, 0, { t: 'ul', items: [{ html: '' }] });
+      savePages();
+      renderDoc();
+      focusListItem(bi + 1, '0');
+    }
+    return false;
+  }
+  // Enter inside an existing bullet adds another bullet right after it at
+  // the same level, same as Notion \u2014 rather than a literal line break
+  // inside the same bullet.
+  function listItemEnterKey(e, bi, pathStr) {
+    if (e.key !== 'Enter' || e.shiftKey) return true;
+    e.preventDefault();
+    const c = curCat();
+    const path = pathStr.split('.').map(Number);
+    const r = itemRef(c.blocks[bi].items, path);
+    r.arr.splice(r.idx + 1, 0, { html: '' });
+    savePages();
+    renderDoc();
+    const newPath = path.slice(0, -1).concat(r.idx + 1).join('.');
+    focusListItem(bi, newPath);
     return false;
   }
   // The first heading in a doc doubles as that category's tab title (and the
