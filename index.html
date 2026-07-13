@@ -943,6 +943,17 @@
   </div>
 </div>
 
+<div class="modal-backdrop" id="text-prompt-backdrop" onclick="if(event.target===this) closeTextPrompt()">
+  <div class="modal-card">
+    <div class="modal-title" id="text-prompt-title">Studio Aa</div>
+    <input class="modal-input" id="text-prompt-input" onkeydown="if(event.key==='Enter') submitTextPrompt(); if(event.key==='Escape') closeTextPrompt();" />
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeTextPrompt()">Cancel</button>
+      <button class="modal-btn primary" onclick="submitTextPrompt()">OK</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="members-backdrop" onclick="if(event.target===this) closeMembers()">
   <div class="modal-card">
     <div class="modal-title">Workspace members</div>
@@ -1504,6 +1515,30 @@
     if (action) action();
   }
 
+  // Same reasoning as showConfirmModal above, but for the native prompt() ---
+  // browsers let people permanently mute prompt()/confirm()/alert() per-site,
+  // and once muted, prompt() just returns null instantly with no visible
+  // error, so "New page"/"New workspace"/etc. silently did nothing.
+  let pendingTextPromptAction = null;
+  function showTextPrompt(title, defaultValue, onSubmit) {
+    pendingTextPromptAction = onSubmit;
+    document.getElementById('text-prompt-title').textContent = title;
+    const input = document.getElementById('text-prompt-input');
+    input.value = defaultValue || '';
+    document.getElementById('text-prompt-backdrop').classList.add('show');
+    setTimeout(() => { input.focus(); input.select(); }, 0);
+  }
+  function closeTextPrompt() {
+    document.getElementById('text-prompt-backdrop').classList.remove('show');
+    pendingTextPromptAction = null;
+  }
+  function submitTextPrompt() {
+    const action = pendingTextPromptAction;
+    const val = document.getElementById('text-prompt-input').value;
+    closeTextPrompt();
+    if (action) action(val);
+  }
+
   let undoStack = [];
   function pushUndoSnapshot(label) {
     undoStack.push({ pages: JSON.parse(JSON.stringify(pages)), cats: JSON.parse(JSON.stringify(cats)), label });
@@ -1539,12 +1574,13 @@
   function openPage(key) { view = key; localStorage.setItem('hq_view', key); render(); }
 
   function addPage() {
-    const label = prompt('What\u2019s the new page called?');
-    if (!label || !label.trim()) return;
-    const key = label.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now().toString(36).slice(-4);
-    pages.push({ key, label: label.trim(), type: 'table', cols: ['Item', 'Status', 'Notes'], rows: [['', '', '']] });
-    savePages();
-    openPage(key);
+    showTextPrompt('What\u2019s the new page called?', '', function (label) {
+      if (!label || !label.trim()) return;
+      const key = label.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now().toString(36).slice(-4);
+      pages.push({ key, label: label.trim(), type: 'table', cols: ['Item', 'Status', 'Notes'], rows: [['', '', '']] });
+      savePages();
+      openPage(key);
+    });
   }
   function delPage(key) {
     if (pages.length <= 1) { showToast('You need at least one page.'); return; }
@@ -2512,12 +2548,13 @@
   }
   function cellAddTag(ri, ci) {
     const c = activeCat();
-    const val = prompt('Add tag');
-    if (!val || !val.trim()) return;
-    const tags = splitTags(c.rows[ri][ci]);
-    tags.push(val.trim());
-    c.rows[ri][ci] = joinTags(tags);
-    saveCats(); renderTable();
+    showTextPrompt('Add tag', '', function (val) {
+      if (!val || !val.trim()) return;
+      const tags = splitTags(c.rows[ri][ci]);
+      tags.push(val.trim());
+      c.rows[ri][ci] = joinTags(tags);
+      saveCats(); renderTable();
+    });
   }
   function cellRemoveTag(ri, ci, ti) {
     const c = activeCat();
@@ -2532,14 +2569,14 @@
     saveCats(); renderTable();
   }
   function addCol() {
-    const name = prompt('Column name', 'New');
-    if (name === null) return;
-    const c = activeCat();
-    ensureColTypes(c);
-    c.cols.push(name || 'New');
-    c.colTypes.push('text');
-    c.rows.forEach(r => r.push(''));
-    saveCats(); renderTable();
+    showTextPrompt('Column name', 'New', function (name) {
+      const c = activeCat();
+      ensureColTypes(c);
+      c.cols.push(name || 'New');
+      c.colTypes.push('text');
+      c.rows.forEach(r => r.push(''));
+      saveCats(); renderTable();
+    });
   }
   function delRow(ri) {
     const c = activeCat();
@@ -2706,12 +2743,13 @@
   }
   function ptCellAddTag(ri, ci) {
     const c = curCat();
-    const val = prompt('Add tag');
-    if (!val || !val.trim()) return;
-    const tags = splitTags(c.rows[ri][ci]);
-    tags.push(val.trim());
-    c.rows[ri][ci] = joinTags(tags);
-    savePages(); renderPageTable();
+    showTextPrompt('Add tag', '', function (val) {
+      if (!val || !val.trim()) return;
+      const tags = splitTags(c.rows[ri][ci]);
+      tags.push(val.trim());
+      c.rows[ri][ci] = joinTags(tags);
+      savePages(); renderPageTable();
+    });
   }
   function ptCellRemoveTag(ri, ci, ti) {
     const c = curCat();
@@ -2722,14 +2760,14 @@
   }
   function ptAddRow() { const c = curCat(); c.rows.push(c.cols.map(() => '')); savePages(); renderPageTable(); }
   function ptAddCol() {
-    const name = prompt('Column name', 'New');
-    if (name === null) return;
-    const c = curCat();
-    ensureColTypes(c);
-    c.cols.push(name || 'New');
-    c.colTypes.push('text');
-    c.rows.forEach(r => r.push(''));
-    savePages(); renderPageTable();
+    showTextPrompt('Column name', 'New', function (name) {
+      const c = curCat();
+      ensureColTypes(c);
+      c.cols.push(name || 'New');
+      c.colTypes.push('text');
+      c.rows.forEach(r => r.push(''));
+      savePages(); renderPageTable();
+    });
   }
   function ptDelRow(ri) {
     const c = curCat();
@@ -3453,23 +3491,30 @@
     if (hdrPop) hdrPop.innerHTML = itemsHTML;
   }
   function deleteWorkspace(id, name) {
-    if (!confirm('Delete workspace "' + name + '"? This permanently deletes all its pages and data.')) return;
-    fetch('/api/workspaces/' + id, { method: 'DELETE' }).then(r => {
-      if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Failed to delete workspace'); });
-      return fetch('/api/workspaces').then(r => r.json());
-    }).then(workspaces => {
-      knownWorkspaces = workspaces;
-      renderWorkspaceSwitcher(workspaces);
-      if (id === currentWorkspaceId) {
-        if (workspaces.length) {
-          switchWorkspace(workspaces[0].id, workspaces[0].name, workspaces[0].role);
-        } else {
-          currentWorkspaceId = null;
-          render();
-          maybeOnboard();
+    // Uses the app's own confirm modal instead of the native browser
+    // confirm() \u2014 confirm()/alert() can be permanently muted per-site by the
+    // browser (e.g. after dismissing enough of them, or via a setting), and
+    // when that happens confirm() just silently returns false, so a delete
+    // click did nothing with zero visible error. This can't be silenced.
+    showConfirmModal('Delete workspace "' + name + '"? This permanently deletes all its pages and data.', function () {
+      fetch('/api/workspaces/' + id, { method: 'DELETE' }).then(r => {
+        if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Failed to delete workspace'); });
+        return fetch('/api/workspaces').then(r => r.json());
+      }).then(workspaces => {
+        knownWorkspaces = workspaces;
+        renderWorkspaceSwitcher(workspaces);
+        if (id === currentWorkspaceId) {
+          if (workspaces.length) {
+            switchWorkspace(workspaces[0].id, workspaces[0].name, workspaces[0].role);
+          } else {
+            currentWorkspaceId = null;
+            render();
+            maybeOnboard();
+          }
         }
-      }
-    }).catch(err => showToast(err.message || 'Could not delete workspace'));
+        showToast('Deleted "' + name + '"');
+      }).catch(err => showToast(err.message || 'Could not delete workspace'));
+    });
   }
   function toggleHeaderWsPop() {
     document.getElementById('hdr-ws-pop').classList.toggle('show');
@@ -3488,18 +3533,19 @@
   });
 
   function createNewWorkspace() {
-    const name = prompt('Name this workspace:');
-    if (!name || !name.trim()) return;
-    fetch('/api/workspaces', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ name: name.trim() })
-    }).then(r => r.json()).then(ws => {
-      return fetch('/api/workspaces').then(r => r.json()).then(workspaces => {
-        knownWorkspaces = workspaces;
-        return switchWorkspace(ws.id, ws.name, ws.role);
-      });
-    }).catch(() => {});
+    showTextPrompt('Name this workspace:', '', function (name) {
+      if (!name || !name.trim()) return;
+      fetch('/api/workspaces', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: name.trim() })
+      }).then(r => r.json()).then(ws => {
+        return fetch('/api/workspaces').then(r => r.json()).then(workspaces => {
+          knownWorkspaces = workspaces;
+          return switchWorkspace(ws.id, ws.name, ws.role);
+        });
+      }).catch(() => {});
+    });
   }
 
   /* ---------- members modal (owner-only invite/remove) ---------- */
