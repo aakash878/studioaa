@@ -2204,7 +2204,8 @@
     }).join('') +
       '<div class="prow-add" onclick="openNewNote()">+ New note</div>' +
       '<div class="prow-add" onclick="addPage()">+ New page</div>' +
-      '<div class="prow-add" onclick="openImport()">+ Import notes, doc, or sheet</div>';
+      '<div class="prow-add" onclick="openImport()">+ Import notes, doc, or sheet</div>' +
+      '<div class="prow-add" style="color:#b04030;" onclick="clearWorkspaceData()">Clear all data (start blank)</div>';
     pagesListHTMLCache = pagesListHTML;
     return '<div class="home">' +
       '<div class="home-title" contenteditable spellcheck="false" onkeydown="return blurOnEnter(event)" oninput="saveWorkspaceName(this.textContent)">' + esc(workspaceName) + '</div>' +
@@ -4319,6 +4320,32 @@
         }
         showToast('Deleted "' + name + '"');
       }).catch(err => showToast(err.message || 'Could not delete workspace'));
+    });
+  }
+  // Wipes THIS workspace's content back to blank (same starting point as a
+  // brand-new workspace — see BLANK_PAGES/BLANK_CATS) without deleting the
+  // workspace itself or kicking out its members. For clearing out leftover
+  // sample/demo data on a workspace that's already been in use, rather than
+  // starting an entirely new workspace from scratch.
+  function clearWorkspaceData() {
+    showConfirmModal('Clear all data in "' + workspaceName + '"? This permanently deletes every page, sheet, visual, and pinned widget — there\u2019s no undo.', function () {
+      pages = JSON.parse(JSON.stringify(BLANK_PAGES));
+      cats = JSON.parse(JSON.stringify(BLANK_CATS));
+      visuals = [];
+      pinnedWidgets = [];
+      dashboardOrder = [];
+      dashboardSizes = {};
+      hiddenBuiltins = new Set();
+      widgetLabels = defaultWidgetLabels();
+      activeKey = cats[0].key;
+      view = 'home';
+      localStorage.setItem('hq_view', 'home');
+      localStorage.setItem('hq_active_cat', activeKey);
+      savePages();
+      saveCats();
+      saveWorkspaceData();
+      render();
+      showToast('Workspace cleared \u2014 starting blank.');
     });
   }
   function toggleHeaderWsPop() {
