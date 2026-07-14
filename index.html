@@ -311,6 +311,9 @@
   .ve-item-del { border: none; background: none; color: var(--gray-2); cursor: pointer; font-size: 14px; }
   .ve-item-del:hover { color: #b04030; }
   .ve-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
+  .visual-embed .widget-title { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .ve-embed-edit { border: none; background: none; color: var(--gray-2); cursor: pointer; font-size: 12px; padding: 0; }
+  .ve-embed-edit:hover { color: var(--ink); }
   .pin-sheet { font-size: 11px; }
   .pin-sheet-row { display: flex; gap: 10px; padding: 4px 0; border-bottom: 1px solid var(--line-soft); }
   .pin-sheet-row:last-child { border-bottom: none; }
@@ -3168,6 +3171,7 @@
       if (b.t === 'toggle') return docBlockWrap(bi, docToggleHTML(b, bi));
       if (b.t === 'ul') return docBlockWrap(bi, '<ul class="doc-ul">' + docListHTML(b.items, bi) + '</ul>' +
         '<div class="doc-additem" onclick="docAddItem(' + bi + ')">+ add item</div>');
+      if (b.t === 'visual') return docBlockWrap(bi, visualEmbedHTML(b.visualId));
       return '';
     }).join('') +
       '<div class="addblock-wrap">' +
@@ -3763,10 +3767,47 @@
   function visualCardHTML(v) {
     return '<div class="widget-card hg-pinned hg-clickable" onclick="openVisualEditor(\'' + v.id + '\')" title="Click to edit">' +
       '<div class="pin-actions" onclick="event.stopPropagation()">' +
+      '<button class="pin-change" onclick="expandVisualToPage(\'' + v.id + '\')" title="Expand into a full page">\u2921</button>' +
       '<button class="pin-unpin" onclick="deleteVisual(\'' + v.id + '\')" title="Delete visual">Delete</button>' +
       '</div>' +
       '<div class="widget-title" id="visual-title-' + v.id + '">' + esc(v.label) + '</div>' +
       visualBodyHTML(v) + '</div>';
+  }
+  // A visual embedded inside a real page's blocks (see docHTML's 'visual'
+  // case and expandVisualToPage below) is a live view of the same
+  // visuals[] record \u2014 not a copy \u2014 so editing it from the Visuals
+  // section and editing it from inside the page stay in sync. The embed is
+  // read-only inline; "Edit" reopens the same small dedicated editor used
+  // everywhere else, rather than duplicating that UI inside the page.
+  function visualEmbedHTML(visualId) {
+    const v = visuals.find(x => x.id === visualId);
+    if (!v) return '<div class="widget-empty">This visual was deleted.</div>';
+    return '<div class="visual-embed">' +
+      '<div class="widget-title">' + esc(v.label) + '<button class="ve-embed-edit" onclick="openVisualEditor(\'' + v.id + '\')" title="Edit visual">\u270e</button></div>' +
+      visualBodyHTML(v) + '</div>';
+  }
+  // Promotes a visual from the dashboard's small "Visuals" section into a
+  // real page \u2014 gets its own entry in Pages/the side panel, opens full-
+  // screen like any other page instead of the compact editor overlay, and
+  // can have more content (headings, notes, etc.) added around it. The
+  // visual's own data stays the single source of truth (see visualEmbedHTML)
+  // \u2014 expanding again just reopens the same page instead of duplicating it.
+  function expandVisualToPage(id) {
+    const v = visuals.find(x => x.id === id);
+    if (!v) return;
+    document.getElementById('page-preview-backdrop').classList.remove('show');
+    document.getElementById('page-preview-body').innerHTML = '';
+    editingVisualId = null;
+    if (v.pageKey && pages.some(p => p.key === v.pageKey)) {
+      openPage(v.pageKey);
+      return;
+    }
+    const key = 'visual-page-' + id;
+    pages.push({ key: key, label: v.label, type: 'doc', parent: null, blocks: [{ t: 'h2', html: esc(v.label) }, { t: 'visual', visualId: id }] });
+    v.pageKey = key;
+    savePages();
+    saveWorkspaceData();
+    openPage(key);
   }
   // The editor is its own dedicated tooling, separate from the doc/table
   // page editor \u2014 plain labeled fields for exactly the shape of data each
@@ -3798,6 +3839,7 @@
       '<div class="ve-fields">' + fields + '</div>' +
       '<div class="ve-actions">' +
       '<button class="modal-btn" style="color:#b04030;" onclick="deleteVisual(\'' + v.id + '\')">Delete</button>' +
+      '<button class="modal-btn" onclick="expandVisualToPage(\'' + v.id + '\')" title="Expand into a full page">Expand to page</button>' +
       '<button class="modal-btn primary" onclick="closePagePreview()">Done</button>' +
       '</div></div>';
   }
