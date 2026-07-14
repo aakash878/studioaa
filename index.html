@@ -3740,6 +3740,9 @@
     if (!v) return;
     showConfirmModal('Delete "' + v.label + '"?', function () {
       visuals = visuals.filter(x => x.id !== id);
+      const cardKey = 'visual-' + id;
+      dashboardOrder = dashboardOrder.filter(k => k !== cardKey);
+      delete dashboardSizes[cardKey];
       saveWorkspaceData();
       closePagePreview();
     });
@@ -3775,11 +3778,27 @@
   function visualCardHTML(v) {
     return '<div class="widget-card hg-pinned hg-clickable" onclick="openVisualEditor(\'' + v.id + '\')" title="Click to edit">' +
       '<div class="pin-actions" onclick="event.stopPropagation()">' +
+      '<button class="pin-change" onclick="toggleVisualStandalone(\'' + v.id + '\')" title="' + (v.standalone ? 'Move back into the Visuals grid' : 'Move out onto the dashboard, on its own') + '">' + (v.standalone ? '\u21f2' : '\u21f1') + '</button>' +
       '<button class="pin-change" onclick="expandVisualToPage(\'' + v.id + '\')" title="Expand into a full page">\u2921</button>' +
       '<button class="pin-unpin" onclick="deleteVisual(\'' + v.id + '\')" title="Delete visual">Delete</button>' +
       '</div>' +
       '<div class="widget-title" id="visual-title-' + v.id + '">' + esc(v.label) + '</div>' +
       visualBodyHTML(v) + '</div>';
+  }
+  // Lets a single visual leave the shared "Visuals" grid and become its own
+  // top-level dashboard card \u2014 draggable/resizable independently, same as
+  // Pages, Schedule, or a pinned widget \u2014 instead of being stuck bundled in
+  // with every other visual. Toggled back the same way. See currentCardKeys()
+  // and cardInnerHTML()'s 'visual-' branch for where the standalone card
+  // actually gets placed on the dashboard.
+  function toggleVisualStandalone(id) {
+    const v = visuals.find(x => x.id === id);
+    if (!v) return;
+    v.standalone = !v.standalone;
+    const cardKey = 'visual-' + id;
+    if (v.standalone && dashboardOrder.indexOf(cardKey) === -1) dashboardOrder.push(cardKey);
+    saveWorkspaceData();
+    render();
   }
   // A visual embedded inside a real page's blocks (see docHTML's 'visual'
   // case and expandVisualToPage below) is a live view of the same
@@ -3920,7 +3939,9 @@
     render();
   }
   function currentCardKeys() {
-    return BUILTIN_CARD_KEYS.filter(k => k === 'pages' || k === 'visuals' || !hiddenBuiltins.has(k)).concat(pinnedWidgets.map(w => w.id));
+    return BUILTIN_CARD_KEYS.filter(k => k === 'pages' || k === 'visuals' || !hiddenBuiltins.has(k))
+      .concat(visuals.filter(v => v.standalone).map(v => 'visual-' + v.id))
+      .concat(pinnedWidgets.map(w => w.id));
   }
   function orderedCardKeys() {
     const all = currentCardKeys();
@@ -3940,8 +3961,9 @@
       return '<div class="hg-pages page-list"><div class="hg-pages-header">' + widgetHeaderHTML('pages') + '</div>' + pagesListHTMLCache + '</div>';
     }
     if (key === 'visuals') {
+      const grouped = visuals.filter(v => !v.standalone);
       return '<div class="hg-visuals widget-card"><div class="hg-pages-header">' + widgetHeaderHTML('visuals') + '</div>' +
-        '<div class="visuals-grid">' + visuals.map(v => visualCardHTML(v)).join('') +
+        '<div class="visuals-grid">' + grouped.map(v => visualCardHTML(v)).join('') +
         '<div class="widget-card hg-visual-add" onclick="openVisualTypeModal()">+ New visual</div>' +
         '</div></div>';
     }
@@ -3950,6 +3972,10 @@
     if (key === 'priority') return '<div class="hg-priority widget-card">' + widgetHeaderHTML('priority') + priorityHTML() + '</div>';
     if (key === 'calendar') return '<div class="hg-calendar widget-card">' +
       widgetHeaderHTML('calendar') + calendarPickerHTML() + '<div id="calendar-body">' + calendarHTML() + '</div></div>';
+    if (key.indexOf('visual-') === 0) {
+      const v = visuals.find(x => x.id === key.slice('visual-'.length));
+      return v ? visualCardHTML(v) : '';
+    }
     const w = pinnedWidgets.find(x => x.id === key);
     return w ? pinnedWidgetCardHTML(w) : '';
   }
