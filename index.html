@@ -3462,6 +3462,19 @@
     savePages();
     openPage(key);
   }
+  // Spacebar on the home dashboard is a fast path into a fresh note — same
+  // "no modal, no questions" flow as clicking "+ New note". Only fires on
+  // 'home' (not on other pages, where space needs to type normally) and only
+  // when focus isn't in an editable field (same guard as the other global
+  // shortcuts above), so it never hijacks an actual space keystroke.
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== ' ' || view !== 'home') return;
+    const el = document.activeElement;
+    const isEditingText = el && (el.isContentEditable || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA');
+    if (isEditingText) return;
+    e.preventDefault();
+    openNewNote();
+  });
 
   /* ---------- page preview overlay: double-click a pinned home widget to
      open its source page almost-full-screen, without navigating away from
