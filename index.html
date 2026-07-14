@@ -1323,6 +1323,14 @@
   }
 
   function esc(s) { return (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+  /* esc() is only safe for text nodes (contenteditable spans/divs) — it never
+     escapes quotes. Real <input value="..."> attributes need that too, or a
+     label/note containing a " silently truncates the attribute and corrupts
+     every tag after it in that chunk of markup (this is what made the visual
+     editor's "Expand to page" button go dead whenever a visual's text had a
+     quote in it — the button was still there, just no longer a real button
+     after the browser's parser recovered from the broken attribute). */
+  function escAttr(s) { return (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
   /* Safe to embed as a 'single-quoted JS string' inside an onclick="..." (double-quoted)
      attribute, even when the underlying value has apostrophes, quotes, or ampersands
      (real client data does — e.g. "l'oreal"). JS-escape first, then HTML-escape what's left. */
@@ -3819,22 +3827,22 @@
       fields = '<div class="ve-row"><label>Done</label><input class="modal-input" type="number" min="0" value="' + v.done + '" oninput="setVisualField(\'' + v.id + '\', \'done\', Number(this.value))"></div>' +
         '<div class="ve-row"><label>Total</label><input class="modal-input" type="number" min="0" value="' + v.total + '" oninput="setVisualField(\'' + v.id + '\', \'total\', Number(this.value))"></div>';
     } else if (v.type === 'stat') {
-      fields = '<div class="ve-row"><label>Value</label><input class="modal-input" value="' + esc(v.value) + '" oninput="setVisualField(\'' + v.id + '\', \'value\', this.value)"></div>' +
-        '<div class="ve-row"><label>Unit / label</label><input class="modal-input" value="' + esc(v.unit || '') + '" oninput="setVisualField(\'' + v.id + '\', \'unit\', this.value)"></div>';
+      fields = '<div class="ve-row"><label>Value</label><input class="modal-input" value="' + escAttr(v.value) + '" oninput="setVisualField(\'' + v.id + '\', \'value\', this.value)"></div>' +
+        '<div class="ve-row"><label>Unit / label</label><input class="modal-input" value="' + escAttr(v.unit || '') + '" oninput="setVisualField(\'' + v.id + '\', \'unit\', this.value)"></div>';
     } else if (v.type === 'checklist' || v.type === 'timeline') {
       fields = '<div class="ve-list">' + (v.items || []).map((it, i) =>
         '<div class="ve-list-row">' +
         (v.type === 'timeline'
-          ? '<input class="modal-input ve-date" placeholder="Date" value="' + esc(it.date || '') + '" oninput="setVisualItemField(\'' + v.id + '\', ' + i + ', \'date\', this.value)">'
+          ? '<input class="modal-input ve-date" placeholder="Date" value="' + escAttr(it.date || '') + '" oninput="setVisualItemField(\'' + v.id + '\', ' + i + ', \'date\', this.value)">'
           : '<input type="checkbox"' + (it.done ? ' checked' : '') + ' onchange="setVisualItemField(\'' + v.id + '\', ' + i + ', \'done\', this.checked)">') +
-        '<input class="modal-input" value="' + esc(it.label) + '" oninput="setVisualItemField(\'' + v.id + '\', ' + i + ', \'label\', this.value)">' +
+        '<input class="modal-input" value="' + escAttr(it.label) + '" oninput="setVisualItemField(\'' + v.id + '\', ' + i + ', \'label\', this.value)">' +
         '<button class="ve-item-del" onclick="delVisualItem(\'' + v.id + '\', ' + i + ')" title="Remove">\u00d7</button>' +
         '</div>'
       ).join('') + '</div><div class="doc-addblock" onclick="addVisualItem(\'' + v.id + '\')">+ add item</div>';
     }
     return '<div class="visual-editor">' +
       '<div class="ve-connected">Visual \u00b7 ' + esc(v.type) + '</div>' +
-      '<input class="ve-title" value="' + esc(v.label) + '" oninput="renameVisual(\'' + v.id + '\', this.value)">' +
+      '<input class="ve-title" value="' + escAttr(v.label) + '" oninput="renameVisual(\'' + v.id + '\', this.value)">' +
       '<div class="ve-preview" id="ve-preview-body">' + visualBodyHTML(v) + '</div>' +
       '<div class="ve-fields">' + fields + '</div>' +
       '<div class="ve-actions">' +
