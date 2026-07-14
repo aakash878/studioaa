@@ -312,8 +312,6 @@
   .ve-item-del:hover { color: #b04030; }
   .ve-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
   .visual-embed .widget-title { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-  .ve-embed-edit { border: none; background: none; color: var(--gray-2); cursor: pointer; font-size: 12px; padding: 0; }
-  .ve-embed-edit:hover { color: var(--ink); }
   .pin-sheet { font-size: 11px; }
   .pin-sheet-row { display: flex; gap: 10px; padding: 4px 0; border-bottom: 1px solid var(--line-soft); }
   .pin-sheet-row:last-child { border-bottom: none; }
@@ -3822,8 +3820,8 @@
   function visualEmbedHTML(visualId) {
     const v = visuals.find(x => x.id === visualId);
     if (!v) return '<div class="widget-empty">This visual was deleted.</div>';
-    return '<div class="visual-embed">' +
-      '<div class="widget-title">' + esc(v.label) + '<button class="ve-embed-edit" onclick="openVisualEditor(\'' + v.id + '\')" title="Edit visual">\u270e</button></div>' +
+    return '<div class="visual-embed hg-clickable" onclick="openVisualEditor(\'' + v.id + '\')" title="Click to edit">' +
+      '<div class="widget-title">' + esc(v.label) + '</div>' +
       visualBodyHTML(v) + '</div>';
   }
   // Promotes a visual from the dashboard's small "Visuals" section into a
