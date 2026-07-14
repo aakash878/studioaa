@@ -263,8 +263,10 @@
   }
   .tl-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--gray-1); }
   .tl-cat { font-size: 9.5px; color: var(--gray-2); flex-shrink: 0; }
-  .cal-item { display: flex; align-items: baseline; gap: 9px; padding: 5px 0; border-bottom: 1px solid var(--line-soft); font-size: 11.5px; font-family: 'Inter', sans-serif; }
+  .cal-item { display: flex; align-items: baseline; gap: 9px; padding: 5px 0; border-bottom: 1px solid var(--line-soft); font-size: 11.5px; font-family: 'Inter', sans-serif; border-radius: 5px; }
   .cal-item:last-child { border-bottom: none; }
+  .cal-item.hg-clickable { cursor: pointer; }
+  .cal-item.hg-clickable:hover { background: var(--hover); }
   .cal-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; text-align: left; }
   .cal-main .tl-label { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cal-main .tl-cat { font-size: 9.5px; color: var(--gray-2); }
@@ -1496,6 +1498,18 @@
     ] }
   ];
 
+  /* ---------- a genuinely blank workspace: the job-sheet nav entry is a
+     required marker (see render()'s view === 'job-sheet' branch — it's what
+     makes "job sheet" show up as a row in Pages at all), not sample content,
+     so it's the only page here. No rate sheet, no schedule, no fake clients.
+     Used for every brand-new workspace instead of SEED_PAGES/SEED_CATS. ---------- */
+  const BLANK_PAGES = [
+    { key: 'job-sheet', label: 'job sheet', type: 'group' }
+  ];
+  const BLANK_CATS = [
+    { key: 'jobs', label: 'Jobs', cols: ['Client', 'Status', 'Notes'], rows: [['', '', '']] }
+  ];
+
   /* ---------- one-off client demo dataset: the real workspace this was
      originally exported from, with every dollar figure redacted for
      showing to someone outside the business. Only loads on ?demo=lola,
@@ -1845,9 +1859,17 @@
   function scheduleHTML() {
     const win = upcomingSchedule(8);
     if (!win.length) return '<div class="widget-empty">Nothing dated yet.</div>';
-    return win.map(it => '<div class="tl-item" onclick="openJobCat(\'' + it.catKey + '\')" title="Open ' + esc(it.cat) + '">' +
-      '<span class="tl-date">' + fmtShort(it.date) + '</span>' +
-      '<span class="tl-label">' + esc(it.label) + '</span><span class="tl-cat">' + esc(it.cat) + '</span></div>').join('');
+    // Same cal-item/cal-main/cal-when layout as the live Google Calendar
+    // widget (calendarHTML) below — main label + category stacked on the
+    // left, date stacked on the right — so the two "what's coming up"
+    // widgets read as one consistent design instead of two different ones.
+    return win.map(it => '<div class="cal-item hg-clickable" onclick="openJobCat(\'' + it.catKey + '\')" title="Open ' + esc(it.cat) + '">' +
+      '<div class="cal-main">' +
+      '<span class="tl-label">' + esc(it.label) + '</span>' +
+      '<span class="tl-cat">' + esc(it.cat) + '</span>' +
+      '</div>' +
+      '<div class="cal-when"><span class="cal-time">' + esc(fmtShort(it.date)) + '</span></div>' +
+      '</div>').join('');
   }
   function statusHTML() {
     const c = cats.find(x => x.key === 'jobs');
@@ -4224,16 +4246,17 @@
     }).then(data => {
       const isEmpty = !data.pages || !data.pages.length;
       if (isEmpty) {
-        // Brand-new workspace: lazy-seed from the demo constants and persist
+        // Brand-new workspace: starts genuinely blank (just the required
+        // job-sheet nav entry and one empty job category) and persists
         // immediately, so this workspace has real content from here on.
-        pages = JSON.parse(JSON.stringify(SEED_PAGES));
-        cats = JSON.parse(JSON.stringify(SEED_CATS));
+        pages = JSON.parse(JSON.stringify(BLANK_PAGES));
+        cats = JSON.parse(JSON.stringify(BLANK_CATS));
         workspaceDataLoaded = true;
         savePages();
         saveCats();
       } else {
         pages = data.pages;
-        cats = data.categories || SEED_CATS;
+        cats = data.categories || BLANK_CATS;
         workspaceDataLoaded = true;
       }
       widgetLabels = Object.assign(defaultWidgetLabels(), (data.widgets && data.widgets.labels) || {});
